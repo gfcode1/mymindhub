@@ -111,7 +111,7 @@ fi
 
 if [[ "$SKIP_BUILD" -eq 0 ]]; then
   echo "Build di produzione..."
-  pnpm build
+  VITE_BASE=/ pnpm build
 else
   echo "Uso il dist/ esistente (--skip-build)."
 fi

@@ -4,7 +4,11 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
+const normalizedBase = (process.env.VITE_BASE ?? '/').trim().replace(/^\/+|\/+$/g, '')
+const base = normalizedBase ? `/${normalizedBase}/` : '/'
+
 export default defineConfig({
+  base,
   plugins: [
     react(),
     tailwindcss(),
@@ -18,8 +22,8 @@ export default defineConfig({
         description:
           'Note, todo, bookmark, calendario e note vocali. Offline-first, sul tuo dispositivo.',
         lang: 'it',
-        start_url: '/#/',
-        scope: '/',
+        start_url: `${base}#/`,
+        scope: base,
         display: 'standalone',
         orientation: 'any',
         theme_color: '#07100e',
@@ -27,33 +31,33 @@ export default defineConfig({
         categories: ['productivity', 'utilities'],
         icons: [
           {
-            src: '/icons/icon-192.png',
+            src: `${base}icons/icon-192.png`,
             sizes: '192x192',
             type: 'image/png',
             purpose: 'any',
           },
           {
-            src: '/icons/icon-512.png',
+            src: `${base}icons/icon-512.png`,
             sizes: '512x512',
             type: 'image/png',
             purpose: 'any',
           },
           {
-            src: '/icons/maskable-512.png',
+            src: `${base}icons/maskable-512.png`,
             sizes: '512x512',
             type: 'image/png',
             purpose: 'maskable',
           },
         ],
         shortcuts: [
-          { name: 'Nuova nota', url: '/#/notes?new=1', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },
-          { name: 'Nuovo todo', url: '/#/todos?new=1', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },
-          { name: 'Nuovo evento', url: '/#/calendar?new=1', icons: [{ src: '/icons/icon-192.png', sizes: '192x192' }] },
+          { name: 'Nuova nota', url: `${base}#/notes?new=1`, icons: [{ src: `${base}icons/icon-192.png`, sizes: '192x192' }] },
+          { name: 'Nuovo todo', url: `${base}#/todos?new=1`, icons: [{ src: `${base}icons/icon-192.png`, sizes: '192x192' }] },
+          { name: 'Nuovo evento', url: `${base}#/calendar?new=1`, icons: [{ src: `${base}icons/icon-192.png`, sizes: '192x192' }] },
         ],
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2,json}'],
-        navigateFallback: '/index.html',
+        navigateFallback: `${base}index.html`,
         cleanupOutdatedCaches: true,
         clientsClaim: true,
       },

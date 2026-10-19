@@ -13,7 +13,9 @@
     "preview": "vite preview",
     "deploy:neocities": "bash scripts/deploy-neocities.sh",
     "deploy:neocities:dry": "bash scripts/deploy-neocities.sh --dry-run",
-    "deploy:neocities:prune": "bash scripts/deploy-neocities.sh --prune"
+    "deploy:neocities:prune": "bash scripts/deploy-neocities.sh --prune",
+    "deploy:github": "bash scripts/deploy-github.sh",
+    "deploy:github:dry": "bash scripts/deploy-github.sh --dry-run"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",
@@ -52,5 +54,6 @@
     "vite": "^8.3.0",
     "vite-plugin-pwa": "^2.0.0",
     "vitest": "^5.0.5"
-  }
+  },
+  "packageManager": "pnpm@11.22.0"
 }

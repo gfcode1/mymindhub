@@ -83,6 +83,34 @@ Note specifiche di Neocities:
 - Dopo un deploy riapri l'app per ricevere il prompt di aggiornamento del service worker.
 - **Limite CSP di Neocities (account free)**: l'header `Content-Security-Policy` usa `worker-src blob:` e blocca la registrazione del service worker. L'app funziona online e i dati restano in IndexedDB, ma su Neocities non può funzionare offline e il caching PWA è disabilitato dal browser. Per l'offline completo serve un host con CSP permissiva (Netlify, Cloudflare Pages, GitHub Pages) o un piano/accordo Neocities che consenta `worker-src 'self'`.
 
+## Deploy su GitHub Pages
+
+Repository: `gfcode1/mymindhub` · URL: `https://gfcode1.github.io/mymindhub/`
+
+Configurazione una-tantum:
+
+1. GitHub → **Settings → Pages**.
+2. **Build and deployment → Source: GitHub Actions**.
+
+Deploy:
+
+```bash
+pnpm deploy:github        # controlli + commit locale
+git push origin main      # il push lo fai tu
+```
+
+Lo script non esegue il push di default. Opzioni utili:
+
+```bash
+pnpm deploy:github:dry             # controlli + anteprima modifiche
+pnpm deploy:github -- --push       # commit + push
+pnpm deploy:github -- --include-untracked
+```
+
+Il workflow `.github/workflows/deploy-pages.yml` esegue test, lint, build con la base corretta (`/mymindhub/`), carica l'artefatto e pubblica su Pages. Su GitHub Pages non c'è il CSP restrittivo di Neocities, quindi service worker e offline funzionano.
+
+La build per Neocities forza `VITE_BASE=/` e resta indipendente dal deploy GitHub.
+
 ## Limiti v1
 
 - Nessuna sincronizzazione multi-dispositivo (il modello dati è già predisposto con `updatedAt`/`deletedAt`).

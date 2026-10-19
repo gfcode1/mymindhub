@@ -1,7 +1,7 @@
 export function Logo({ size = 28, className }: { size?: number; className?: string }) {
   return (
     <img
-      src="/icon.svg"
+      src={`${import.meta.env.BASE_URL}icon.svg`}
       alt="BinHub"
       width={size}
       height={size}
