@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="it" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>BinHub</title>
+    <meta
+      name="description"
+      content="Note, todo, bookmark, calendario e note vocali. Offline-first, sul tuo dispositivo."
+    />
+    <meta name="theme-color" content="#07100e" />
+    <meta name="color-scheme" content="dark light" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="BinHub" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <script>
+      ;(() => {
+        try {
+          const theme = localStorage.getItem('binhub-theme') || 'system'
+          const dark =
+            theme === 'dark' ||
+            (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+          document.documentElement.classList.toggle('dark', dark)
+          const accents = {
+            teal: ['#0d9488', '#2dd4bf', '#ffffff', '#04211c'],
+            indigo: ['#4f46e5', '#818cf8', '#ffffff', '#0b1029'],
+            violet: ['#7c3aed', '#a78bfa', '#ffffff', '#160b2e'],
+            amber: ['#b45309', '#fbbf24', '#ffffff', '#241503'],
+            rose: ['#be123c', '#fb7185', '#ffffff', '#2b0710'],
+            lime: ['#4d7c0f', '#bef264', '#ffffff', '#141f04'],
+          }
+          const accent = accents[localStorage.getItem('binhub-accent') || 'teal'] || accents.teal
+          document.documentElement.style.setProperty('--accent', dark ? accent[1] : accent[0])
+          document.documentElement.style.setProperty('--accent-ink', dark ? accent[3] : accent[2])
+        } catch {
+          // ignore
+        }
+      })()
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
