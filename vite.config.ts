@@ -54,6 +54,12 @@ export default defineConfig({
           { name: 'Nuovo todo', url: `${base}#/todos?new=1`, icons: [{ src: `${base}icons/icon-192.png`, sizes: '192x192' }] },
           { name: 'Nuovo evento', url: `${base}#/calendar?new=1`, icons: [{ src: `${base}icons/icon-192.png`, sizes: '192x192' }] },
         ],
+        share_target: {
+          action: `${base}index.html?share=1`,
+          method: 'GET',
+          enctype: 'application/x-www-form-urlencoded',
+          params: { title: 'title', text: 'text', url: 'url' },
+        },
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2,json}'],

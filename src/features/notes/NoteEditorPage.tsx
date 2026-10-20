@@ -14,12 +14,16 @@ import {
   Link2,
   List,
   Pin,
+  Timer,
   Trash2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button, IconButton } from '@/components/ui/Button'
 import { TagInput } from '@/components/ui/TagInput'
+import { DictationButton } from '@/components/ui/DictationButton'
+import { EntityLinks } from '@/features/links/EntityLinks'
 import { useNote, useTags } from '@/hooks/useData'
+import { useI18n } from '@/hooks/useI18n'
 import { deleteNote, restoreNote, updateNote } from '@/db/seed'
 import { cn } from '@/lib/utils'
 
@@ -30,6 +34,7 @@ export function NoteEditorPage() {
   const navigate = useNavigate()
   const note = useNote(id)
   const tags = useTags()
+  const { t } = useI18n()
 
   const [hydratedId, setHydratedId] = useState<string | null>(null)
   const [title, setTitle] = useState('')
@@ -96,10 +101,10 @@ export function NoteEditorPage() {
   if (note === null || !note) {
     return (
       <div className="py-16 text-center">
-        <p className="text-sm font-medium">Nota non trovata</p>
-        <p className="mt-1 text-sm text-muted">Potrebbe essere stata eliminata.</p>
+        <p className="text-sm font-medium">{t('note.notFound')}</p>
+        <p className="mt-1 text-sm text-muted">{t('note.notFoundDesc')}</p>
         <Button variant="secondary" className="mt-4" onClick={() => navigate('/notes')}>
-          Torna alle note
+          {t('note.backToList')}
         </Button>
       </div>
     )
@@ -134,14 +139,40 @@ export function NoteEditorPage() {
     })
   }
 
+  const appendSpeech = (text: string) => {
+    const clean = text.trim()
+    if (!clean) return
+    const element = textareaRef.current
+    if (!element || preview) {
+      const base = content.trimEnd()
+      setContent(base ? `${base} ${clean}` : clean)
+      markDirty()
+      return
+    }
+    const start = element.selectionStart
+    const end = element.selectionEnd
+    const before = content.slice(0, start)
+    const after = content.slice(end)
+    const prefix = before && !/\s$/.test(before) ? ' ' : ''
+    const suffix = after && !/^\s/.test(after) ? ' ' : ''
+    const inserted = `${prefix}${clean}${suffix}`
+    setContent(`${before}${inserted}${after}`)
+    markDirty()
+    const caret = start + inserted.length
+    requestAnimationFrame(() => {
+      element.focus()
+      element.setSelectionRange(caret, caret)
+    })
+  }
+
   const handleArchive = () => {
     if (!noteId) return
     const nextArchived = !note.archived
     setDirty(false)
     void updateNote(noteId, { title, content, tags: noteTags, archived: nextArchived }).then(() => {
-      toast(nextArchived ? 'Nota archiviata' : 'Nota ripristinata', {
+      toast(nextArchived ? t('note.archived') : t('note.restored'), {
         action: {
-          label: 'Annulla',
+          label: t('common.undo'),
           onClick: () => void updateNote(noteId, { archived: !nextArchived }),
         },
       })
@@ -153,9 +184,9 @@ export function NoteEditorPage() {
     if (!noteId) return
     setDirty(false)
     void deleteNote(noteId).then(() => {
-      toast('Nota eliminata', {
+      toast(t('note.deleted'), {
         action: {
-          label: 'Annulla',
+          label: t('common.undo'),
           onClick: () => void restoreNote(noteId),
         },
       })
@@ -168,7 +199,7 @@ export function NoteEditorPage() {
   return (
     <div className="animate-fade-in">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <IconButton label="Torna alle note" onClick={() => navigate('/notes')}>
+        <IconButton label={t('note.back')} onClick={() => navigate('/notes')}>
           <ArrowLeft size={19} />
         </IconButton>
         <div className="flex items-center gap-0.5">
@@ -180,23 +211,29 @@ export function NoteEditorPage() {
             role="status"
           >
             {saveState === 'saving'
-              ? 'Salvataggio…'
+              ? t('note.saving')
               : saveState === 'error'
-                ? 'Errore di salvataggio'
-                : 'Salvato'}
+                ? t('note.saveError')
+                : t('note.saved')}
           </span>
-          <IconButton label={note.pinned ? 'Rimuovi pin' : 'Fissa in alto'} onClick={() => {
+          <IconButton label={note.pinned ? t('note.unpin') : t('note.pin')} onClick={() => {
             void updateNote(note.id, { pinned: !note.pinned })
           }}>
             {note.pinned ? <Pin size={18} className="fill-accent text-accent" /> : <Pin size={18} />}
           </IconButton>
-          <IconButton label={preview ? 'Scrivi' : 'Anteprima'} onClick={() => setPreview((value) => !value)}>
+          <IconButton label={preview ? t('note.write') : t('note.preview')} onClick={() => setPreview((value) => !value)}>
             {preview ? <EyeOff size={18} /> : <Eye size={18} />}
           </IconButton>
-          <IconButton label={note.archived ? 'Ripristina' : 'Archivia'} onClick={handleArchive}>
+          <IconButton
+            label={t('time.startForNote')}
+            onClick={() => navigate(`/timer?note=${note.id}&label=${encodeURIComponent(note.title)}`)}
+          >
+            <Timer size={18} />
+          </IconButton>
+          <IconButton label={note.archived ? t('note.unarchive') : t('common.archive')} onClick={handleArchive}>
             <Archive size={18} />
           </IconButton>
-          <IconButton label="Elimina nota" onClick={handleDelete} className="hover:text-danger">
+          <IconButton label={t('note.delete')} onClick={handleDelete} className="hover:text-danger">
             <Trash2 size={18} />
           </IconButton>
         </div>
@@ -208,18 +245,18 @@ export function NoteEditorPage() {
           setTitle(event.target.value)
           markDirty()
         }}
-        placeholder="Titolo della nota"
-        aria-label="Titolo della nota"
+        placeholder={t('note.titlePlaceholder')}
+        aria-label={t('note.titleAria')}
         className="mb-2 w-full bg-transparent text-[1.65rem] font-semibold leading-tight tracking-[-0.03em] outline-none placeholder:text-faint/70"
       />
 
       <div className="mb-3 flex flex-wrap items-center gap-2 text-[11px] text-faint">
-        <span>{words} parole</span>
+        <span>{t('common.words', { count: words })}</span>
         <span>·</span>
-        <span>{content.length} caratteri</span>
+        <span>{t('common.characters', { count: content.length })}</span>
         <span>·</span>
-        <span>Markdown</span>
-        {saveState === 'saving' ? <span className="text-accent sm:hidden">· Salvataggio…</span> : null}
+        <span>{t('common.markdown')}</span>
+        {saveState === 'saving' ? <span className="text-accent sm:hidden">· {t('note.saving')}</span> : null}
       </div>
 
       <div className="mb-4">
@@ -233,29 +270,32 @@ export function NoteEditorPage() {
         />
       </div>
 
+      <EntityLinks type="note" id={note.id} className="mb-4" />
+
       {!preview ? (
         <>
           <div className="scrollbar-none mb-2 flex items-center gap-0.5 overflow-x-auto rounded-xl border border-line bg-surface p-1">
-            <ToolbarButton label="Grassetto" onClick={() => insert('**', '**')}>
+            <ToolbarButton label={t('note.bold')} onClick={() => insert('**', '**')}>
               <Bold size={15} />
             </ToolbarButton>
-            <ToolbarButton label="Corsivo" onClick={() => insert('_', '_')}>
+            <ToolbarButton label={t('note.italic')} onClick={() => insert('_', '_')}>
               <Italic size={15} />
             </ToolbarButton>
-            <ToolbarButton label="Titolo" onClick={() => insert('## ', '', true)}>
+            <ToolbarButton label={t('note.heading')} onClick={() => insert('## ', '', true)}>
               <span className="text-[13px] font-semibold">H2</span>
             </ToolbarButton>
-            <ToolbarButton label="Elenco" onClick={() => insert('- ', '', true)}>
+            <ToolbarButton label={t('note.list')} onClick={() => insert('- ', '', true)}>
               <List size={15} />
             </ToolbarButton>
-            <ToolbarButton label="Checklist" onClick={() => insert('- [ ] ', '', true)}>
+            <ToolbarButton label={t('note.checklist')} onClick={() => insert('- [ ] ', '', true)}>
               <CheckSquare size={15} />
             </ToolbarButton>
-            <ToolbarButton label="Link" onClick={() => insert('[', '](https://)')}>
+            <ToolbarButton label={t('note.link')} onClick={() => insert('[', '](https://)')}>
               <Link2 size={15} />
             </ToolbarButton>
+            <DictationButton onText={appendSpeech} disabled={preview} className="ml-1" />
             <span className="ml-auto hidden pr-1 text-[10px] text-faint sm:block">
-              Salvataggio automatico
+              {t('note.autosave')}
             </span>
           </div>
           <textarea
@@ -265,7 +305,7 @@ export function NoteEditorPage() {
               setContent(event.target.value)
               markDirty()
             }}
-            placeholder="Scrivi qualcosa… Puoi usare # titoli, **grassetto**, - elenchi e checklist."
+            placeholder={t('note.contentPlaceholder')}
             className="min-h-[48dvh] w-full resize-y rounded-2xl border border-line bg-surface p-4 text-[15px] leading-relaxed text-ink outline-none placeholder:text-faint/70 focus:border-accent/50 focus:ring-2 focus:ring-accent/15"
           />
         </>
@@ -288,7 +328,7 @@ export function NoteEditorPage() {
               </Markdown>
             </div>
           ) : (
-            <p className="text-sm italic text-faint">Niente da mostrare. Scrivi qualcosa nella nota.</p>
+            <p className="text-sm italic text-faint">{t('note.previewEmpty')}</p>
           )}
         </div>
       )}

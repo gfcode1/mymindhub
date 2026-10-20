@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react'
 import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useI18n } from '@/hooks/useI18n'
 import { Button } from './Button'
 
 interface ModalProps {
@@ -22,6 +23,7 @@ export function Modal({
   footer,
   size = 'md',
 }: ModalProps) {
+  const { t } = useI18n()
   const ref = useRef<HTMLDialogElement>(null)
   const titleId = useId()
   const descriptionId = useId()
@@ -77,7 +79,7 @@ export function Modal({
               </p>
             ) : null}
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose} aria-label="Chiudi">
+          <Button variant="ghost" size="icon" onClick={onClose} aria-label={t('modal.close')}>
             <X size={18} />
           </Button>
         </div>
@@ -96,8 +98,8 @@ export function ConfirmDialog({
   open,
   title,
   description,
-  confirmLabel = 'Conferma',
-  cancelLabel = 'Annulla',
+  confirmLabel,
+  cancelLabel,
   destructive = false,
   onConfirm,
   onClose,
@@ -111,6 +113,9 @@ export function ConfirmDialog({
   onConfirm: () => void
   onClose: () => void
 }) {
+  const { t } = useI18n()
+  const confirmText = confirmLabel ?? t('confirm.confirm')
+  const cancelText = cancelLabel ?? t('confirm.cancel')
   return (
     <Modal
       open={open}
@@ -121,7 +126,7 @@ export function ConfirmDialog({
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            {cancelLabel}
+            {cancelText}
           </Button>
           <Button
             variant={destructive ? 'danger' : 'primary'}
@@ -130,14 +135,12 @@ export function ConfirmDialog({
               onClose()
             }}
           >
-            {confirmLabel}
+            {confirmText}
           </Button>
         </>
       }
     >
-      <div className="text-sm text-muted">
-        Questa azione viene eseguita solo sul tuo dispositivo.
-      </div>
+      <div className="text-sm text-muted">{t('common.deviceOnly')}</div>
     </Modal>
   )
 }

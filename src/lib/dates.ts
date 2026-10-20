@@ -16,7 +16,9 @@ import {
   subMonths,
   subWeeks,
 } from 'date-fns'
-import { it } from 'date-fns/locale'
+import { it, type Locale } from 'date-fns/locale'
+import { translate } from '@/lib/i18n'
+import type { Language } from '@/types/models'
 
 export const WEEK_OPTS = { weekStartsOn: 1 as const, locale: it }
 
@@ -38,10 +40,10 @@ export function parseDateSafe(value: string | Date | null | undefined): Date | n
   return Number.isNaN(date.getTime()) ? null : date
 }
 
-export function formatDate(value: string | Date, pattern = 'd MMM yyyy'): string {
+export function formatDate(value: string | Date, pattern = 'd MMM yyyy', locale: Locale = it): string {
   const date = parseDateSafe(value)
   if (!date) return ''
-  return format(date, pattern, { locale: it })
+  return format(date, pattern, { locale })
 }
 
 export function formatTime(value: string | Date): string {
@@ -50,23 +52,23 @@ export function formatTime(value: string | Date): string {
   return format(date, 'HH:mm')
 }
 
-export function formatDateTime(value: string | Date): string {
+export function formatDateTime(value: string | Date, locale: Locale = it): string {
   const date = parseDateSafe(value)
   if (!date) return ''
-  return format(date, "d MMM yyyy '·' HH:mm", { locale: it })
+  return format(date, "d MMM yyyy '·' HH:mm", { locale })
 }
 
-export function relativeDate(value: string | Date): string {
+export function relativeDate(value: string | Date, locale: Locale = it, language: Language = 'it'): string {
   const date = parseDateSafe(value)
   if (!date) return ''
   const today = startOfDay(new Date())
   const target = startOfDay(date)
   const diff = Math.round((target.getTime() - today.getTime()) / 86_400_000)
-  if (diff === 0) return 'Oggi'
-  if (diff === 1) return 'Domani'
-  if (diff === -1) return 'Ieri'
-  if (diff > 1 && diff < 7) return format(date, 'EEEE', { locale: it })
-  return format(date, 'd MMM', { locale: it })
+  if (diff === 0) return translate(language, 'common.today')
+  if (diff === 1) return translate(language, 'common.tomorrow')
+  if (diff === -1) return translate(language, 'common.yesterday')
+  if (diff > 1 && diff < 7) return format(date, 'EEEE', { locale })
+  return format(date, 'd MMM', { locale })
 }
 
 export function isOverdue(dateValue: string | null): boolean {

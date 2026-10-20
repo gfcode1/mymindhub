@@ -1,17 +1,20 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { ArrowLeft, Bookmark, CalendarDays, CircleCheckBig, Mic, NotebookPen, Search } from 'lucide-react'
+import { ArrowLeft, Bookmark, CalendarDays, CircleCheckBig, Mic, NotebookPen, Repeat2, ScrollText, Search } from 'lucide-react'
 import { Input } from '@/components/ui/Field'
 import { useGlobalSearch, useTags } from '@/hooks/useData'
 import { EmptyState } from '@/components/ui/PageHeader'
+import { useI18n } from '@/hooks/useI18n'
 import type { SearchHit } from '@/hooks/useData'
 
-const TYPE_META: Record<SearchHit['type'], { label: string; icon: typeof NotebookPen; className: string }> = {
-  note: { label: 'Nota', icon: NotebookPen, className: 'bg-teal-500/10 text-teal-500' },
-  todo: { label: 'Todo', icon: CircleCheckBig, className: 'bg-emerald-500/10 text-emerald-500' },
-  bookmark: { label: 'Link', icon: Bookmark, className: 'bg-indigo-500/10 text-indigo-400' },
-  event: { label: 'Evento', icon: CalendarDays, className: 'bg-violet-500/10 text-violet-400' },
-  voice: { label: 'Vocale', icon: Mic, className: 'bg-rose-500/10 text-rose-400' },
+const TYPE_META: Record<SearchHit['type'], { labelKey: 'search.typeNote' | 'search.typeTodo' | 'search.typeBookmark' | 'search.typeEvent' | 'search.typeVoice' | 'search.typeJournal' | 'search.typeHabit'; icon: typeof NotebookPen; className: string }> = {
+  note: { labelKey: 'search.typeNote', icon: NotebookPen, className: 'bg-teal-500/10 text-teal-500' },
+  todo: { labelKey: 'search.typeTodo', icon: CircleCheckBig, className: 'bg-emerald-500/10 text-emerald-500' },
+  bookmark: { labelKey: 'search.typeBookmark', icon: Bookmark, className: 'bg-indigo-500/10 text-indigo-400' },
+  event: { labelKey: 'search.typeEvent', icon: CalendarDays, className: 'bg-violet-500/10 text-violet-400' },
+  voice: { labelKey: 'search.typeVoice', icon: Mic, className: 'bg-rose-500/10 text-rose-400' },
+  journal: { labelKey: 'search.typeJournal', icon: ScrollText, className: 'bg-amber-500/10 text-amber-500' },
+  habit: { labelKey: 'search.typeHabit', icon: Repeat2, className: 'bg-lime-500/10 text-lime-500' },
 }
 
 export function SearchPage() {
@@ -19,6 +22,7 @@ export function SearchPage() {
   const results = useGlobalSearch(query)
   const tags = useTags()
   const navigate = useNavigate()
+  const { t, tCount } = useI18n()
 
   return (
     <div className="animate-fade-in">
@@ -26,7 +30,7 @@ export function SearchPage() {
         <button
           type="button"
           onClick={() => navigate(-1)}
-          aria-label="Indietro"
+          aria-label={t('search.back')}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-muted hover:bg-raised hover:text-ink"
         >
           <ArrowLeft size={19} />
@@ -36,7 +40,7 @@ export function SearchPage() {
           <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Cerca note, todo, link, eventi…"
+            placeholder={t('search.placeholder')}
             className="h-11 pl-10"
             type="search"
             autoFocus
@@ -46,7 +50,7 @@ export function SearchPage() {
 
       {query.trim().length < 2 ? (
         <div>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-faint">Tag</p>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-faint">{t('search.tags')}</p>
           <div className="flex flex-wrap gap-1.5">
             {tags.slice(0, 24).map((tag) => (
               <button
@@ -59,27 +63,27 @@ export function SearchPage() {
               </button>
             ))}
             {tags.length === 0 ? (
-              <p className="text-xs text-faint">I tag compaiono quando ne aggiungi alle note o ai todo.</p>
+              <p className="text-xs text-faint">{t('search.tagsHint')}</p>
             ) : null}
           </div>
           <div className="mt-8">
             <EmptyState
               icon={<Search size={20} />}
-              title="Cerca in tutto"
-              description="Scrivi almeno due caratteri. La ricerca è locale e funziona offline."
+              title={t('search.emptyTitle')}
+              description={t('search.emptyDesc')}
             />
           </div>
         </div>
       ) : results.length === 0 ? (
         <EmptyState
           icon={<Search size={20} />}
-          title="Nessun risultato"
-          description={`Nessun contenuto corrisponde a “${query.trim()}”.`}
+          title={t('search.noResults')}
+          description={t('search.noResultsDesc', { query: query.trim() })}
         />
       ) : (
         <div>
           <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-faint">
-            {results.length} {results.length === 1 ? 'risultato' : 'risultati'}
+            {tCount('search.results', results.length)}
           </p>
           <div className="space-y-1.5">
             {results.map((hit) => {
@@ -97,7 +101,7 @@ export function SearchPage() {
                     <span className="flex items-center gap-2">
                       <span className="truncate text-sm font-medium">{hit.title}</span>
                       <span className="shrink-0 rounded bg-raised px-1.5 py-0.5 text-[10px] text-muted">
-                        {meta.label}
+                        {t(meta.labelKey)}
                       </span>
                     </span>
                     {hit.subtitle ? (

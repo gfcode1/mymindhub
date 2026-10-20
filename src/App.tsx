@@ -4,6 +4,10 @@ import { Toaster } from 'sonner'
 import { AppShell } from '@/components/layout/AppShell'
 import { Logo } from '@/components/layout/Logo'
 import { PwaManager } from '@/components/layout/PwaManager'
+import { TimerWatcher } from '@/features/timer/TimerWatcher'
+import { AlarmWatcher } from '@/features/alarms/AlarmWatcher'
+import { CaptureBridge } from '@/components/layout/CaptureBridge'
+import { WelcomePage } from '@/features/welcome/WelcomePage'
 import { useSettings } from '@/hooks/useData'
 import { useApplyTheme } from '@/hooks/useTheme'
 import { seedIfNeeded } from '@/db/seed'
@@ -23,6 +27,9 @@ const TodosPage = lazy(() =>
 const BookmarksPage = lazy(() =>
   import('@/features/bookmarks/BookmarksPage').then((module) => ({ default: module.BookmarksPage })),
 )
+const ReaderPage = lazy(() =>
+  import('@/features/reader/ReaderPage').then((module) => ({ default: module.ReaderPage })),
+)
 const CalendarPage = lazy(() =>
   import('@/features/calendar/CalendarPage').then((module) => ({ default: module.CalendarPage })),
 )
@@ -34,6 +41,35 @@ const SearchPage = lazy(() =>
 )
 const SettingsPage = lazy(() =>
   import('@/features/settings/SettingsPage').then((module) => ({ default: module.SettingsPage })),
+)
+const JournalPage = lazy(() =>
+  import('@/features/journal/JournalPage').then((module) => ({ default: module.JournalPage })),
+)
+const HabitsPage = lazy(() =>
+  import('@/features/habits/HabitsPage').then((module) => ({ default: module.HabitsPage })),
+)
+const TimerPage = lazy(() =>
+  import('@/features/timer/TimerPage').then((module) => ({ default: module.TimerPage })),
+)
+const TimeAuditPage = lazy(() =>
+  import('@/features/timer/TimeAuditPage').then((module) => ({ default: module.TimeAuditPage })),
+)
+const ExpensesPage = lazy(() =>
+  import('@/features/expenses/ExpensesPage').then((module) => ({ default: module.ExpensesPage })),
+)
+const VaultPage = lazy(() =>
+  import('@/features/vault/VaultPage').then((module) => ({ default: module.VaultPage })),
+)
+const WhiteboardsPage = lazy(() =>
+  import('@/features/whiteboards/WhiteboardsPage').then((module) => ({ default: module.WhiteboardsPage })),
+)
+const WhiteboardEditorPage = lazy(() =>
+  import('@/features/whiteboards/WhiteboardEditorPage').then((module) => ({
+    default: module.WhiteboardEditorPage,
+  })),
+)
+const AlarmsPage = lazy(() =>
+  import('@/features/alarms/AlarmsPage').then((module) => ({ default: module.AlarmsPage })),
 )
 
 function PageLoader() {
@@ -60,7 +96,9 @@ function App() {
       })
   }, [])
 
-  if (!ready) return <BootScreen />
+  if (!ready || !loaded) return <BootScreen />
+
+  if (!settings.onboarded) return <WelcomePage />
 
   return (
     <>
@@ -72,8 +110,18 @@ function App() {
           <Route path="notes/:id" element={<NoteEditorPage />} />
           <Route path="todos" element={<TodosPage />} />
           <Route path="bookmarks" element={<BookmarksPage />} />
+          <Route path="reader/:id" element={<ReaderPage />} />
           <Route path="calendar" element={<CalendarPage />} />
           <Route path="voice" element={<VoicePage />} />
+          <Route path="journal" element={<JournalPage />} />
+          <Route path="habits" element={<HabitsPage />} />
+          <Route path="timer" element={<TimerPage />} />
+          <Route path="time" element={<TimeAuditPage />} />
+          <Route path="expenses" element={<ExpensesPage />} />
+          <Route path="vault" element={<VaultPage />} />
+          <Route path="whiteboards" element={<WhiteboardsPage />} />
+          <Route path="whiteboards/:id" element={<WhiteboardEditorPage />} />
+          <Route path="alarms" element={<AlarmsPage />} />
           <Route path="search" element={<SearchPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
@@ -94,6 +142,9 @@ function App() {
         }}
       />
       <PwaManager />
+      <TimerWatcher />
+      <AlarmWatcher />
+      <CaptureBridge />
     </>
   )
 }

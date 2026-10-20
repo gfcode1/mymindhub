@@ -1,0 +1,176 @@
+{
+  "extName": {
+    "message": "BinHub Capture"
+  },
+  "extDescription": {
+    "message": "Save bookmarks, selections, pages and screenshots to BinHub."
+  },
+  "actionTitle": {
+    "message": "BinHub Capture"
+  },
+  "popupTitle": {
+    "message": "BinHub Capture"
+  },
+  "bookmark": {
+    "message": "Save bookmark"
+  },
+  "note": {
+    "message": "Selection → note"
+  },
+  "todo": {
+    "message": "Selection → todo"
+  },
+  "reader": {
+    "message": "Page → Reader"
+  },
+  "clipboard": {
+    "message": "Paste from clipboard"
+  },
+  "screenshot": {
+    "message": "Screenshot → Vault"
+  },
+  "openApp": {
+    "message": "Open BinHub"
+  },
+  "options": {
+    "message": "Settings"
+  },
+  "retry": {
+    "message": "Retry"
+  },
+  "clearQueue": {
+    "message": "Clear queue"
+  },
+  "queueLabel": {
+    "message": "Queued: $1"
+  },
+  "queueEmpty": {
+    "message": "Queue empty"
+  },
+  "pending": {
+    "message": "Sending…"
+  },
+  "selectionLabel": {
+    "message": "Selection"
+  },
+  "selectionEmpty": {
+    "message": "No text selected."
+  },
+  "setupTitle": {
+    "message": "Set up BinHub"
+  },
+  "setupDesc": {
+    "message": "Set the BinHub URL and grant permission to save into it."
+  },
+  "setupAction": {
+    "message": "Open settings"
+  },
+  "statusReady": {
+    "message": "Ready"
+  },
+  "statusSetup": {
+    "message": "Setup required"
+  },
+  "statusPermission": {
+    "message": "Host permission missing"
+  },
+  "statusQueue": {
+    "message": "$1 queued"
+  },
+  "savedQueued": {
+    "message": "Saved to queue. Opening BinHub…"
+  },
+  "errorGeneric": {
+    "message": "Operation failed."
+  },
+  "extracting": {
+    "message": "Extracting…"
+  },
+  "extractFailed": {
+    "message": "Could not extract the page."
+  },
+  "clipboardEmpty": {
+    "message": "The clipboard is empty."
+  },
+  "clipboardPreview": {
+    "message": "Clipboard preview"
+  },
+  "saveAsNote": {
+    "message": "Save as note"
+  },
+  "saveAsTodo": {
+    "message": "Save as todo"
+  },
+  "screenshotTitle": {
+    "message": "Screenshot — $1"
+  },
+  "screenshotTooLarge": {
+    "message": "Screenshot too large."
+  },
+  "urlInvalid": {
+    "message": "Invalid URL."
+  },
+  "permissionDenied": {
+    "message": "Permission denied."
+  },
+  "settingsSaved": {
+    "message": "Settings saved."
+  },
+  "settingsTitle": {
+    "message": "BinHub Capture settings"
+  },
+  "appUrl": {
+    "message": "BinHub URL"
+  },
+  "appUrlHint": {
+    "message": "E.g. https://gfcode1.github.io/mymindhub/"
+  },
+  "openInBackground": {
+    "message": "Open BinHub in a background tab"
+  },
+  "save": {
+    "message": "Save"
+  },
+  "testOpen": {
+    "message": "Open BinHub"
+  },
+  "queue": {
+    "message": "Queue"
+  },
+  "queueHelp": {
+    "message": "Items not saved yet stay here."
+  },
+  "clearConfirm": {
+    "message": "Clear the queue?"
+  },
+  "cleared": {
+    "message": "Queue cleared."
+  },
+  "settingsHint": {
+    "message": "Permission is only needed for the configured URL."
+  },
+  "selectionTooLong": {
+    "message": "Selection too long (max 100,000 characters)."
+  },
+  "clipboardTitle": {
+    "message": "From clipboard"
+  },
+  "clipboardNoteTitle": {
+    "message": "Clipboard"
+  },
+  "clipboardTodoTitle": {
+    "message": "Clipboard todo"
+  },
+  "unsupportedPage": {
+    "message": "Page not supported."
+  },
+  "permissionGranted": {
+    "message": "Permission granted."
+  },
+  "permissionMissing": {
+    "message": "Permission missing."
+  },
+  "queueFull": {
+    "message": "Queue full. Open BinHub and retry."
+  }
+}

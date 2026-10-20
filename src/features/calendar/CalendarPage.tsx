@@ -9,18 +9,20 @@ import {
   Clock,
   Link2,
   MapPin,
+  Repeat2,
 } from 'lucide-react'
 import { format } from 'date-fns'
-import { it } from 'date-fns/locale'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Button, IconButton } from '@/components/ui/Button'
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
 import { EmptyState } from '@/components/ui/PageHeader'
+import { EmojiIcon } from '@/components/ui/EmojiIcon'
 import { useEvents, useSettings, useTodos } from '@/hooks/useData'
+import { eventOccursOn } from '@/lib/recurrence'
+import { useI18n } from '@/hooks/useI18n'
 import { saveSettings, toggleTodo } from '@/db/seed'
 import {
   dateKey,
-  eventCoversDay,
   formatHumanDuration,
   formatTime,
   isOverdue,
@@ -29,7 +31,7 @@ import {
   weekDays,
 } from '@/lib/dates'
 import { cn } from '@/lib/utils'
-import type { CalendarEvent, CalendarView, Todo } from '@/types/models'
+import { isRecurringEvent, type CalendarEvent, type CalendarView, type Todo } from '@/types/models'
 import { EventEditorModal } from './EventEditorModal'
 
 function capitalize(value: string): string {
@@ -40,6 +42,7 @@ export function CalendarPage() {
   const events = useEvents()
   const todos = useTodos()
   const { settings } = useSettings()
+  const { t, locale } = useI18n()
   const [params, setParams] = useSearchParams()
   const [view, setView] = useState<CalendarView>(settings.calendarView)
   const [viewDate, setViewDate] = useState(() => new Date())
@@ -65,27 +68,34 @@ export function CalendarPage() {
   const days = useMemo(() => monthMatrix(viewDate, selected), [viewDate, selected])
   const week = useMemo(() => weekDays(viewDate), [viewDate])
 
+  const weekdayLabels = useMemo(
+    () => Array.from({ length: 7 }, (_, index) => format(new Date(2024, 0, 1 + index), 'EEEEE', { locale })),
+    [locale],
+  )
+
   const selectedEvents = useMemo(
     () =>
       events
-        .filter((event) => eventCoversDay(event.start, event.end, selected))
+        .map((event) => ({ event, occurrence: eventOccursOn(event, selected) }))
+        .filter((item) => item.occurrence !== null)
         .sort((a, b) => {
-          if (a.allDay !== b.allDay) return a.allDay ? -1 : 1
-          return Date.parse(a.start) - Date.parse(b.start)
-        }),
+          if (a.event.allDay !== b.event.allDay) return a.event.allDay ? -1 : 1
+          return a.occurrence!.start.getTime() - b.occurrence!.start.getTime()
+        })
+        .map((item) => item.event),
     [events, selected],
   )
   const selectedTodos = todos.filter((todo) => todo.dueDate === selectedKey && !todo.deletedAt)
 
-  const eventsForDay = (day: Date) => events.filter((event) => eventCoversDay(event.start, event.end, day))
+  const eventsForDay = (day: Date) => events.filter((event) => eventOccursOn(event, day))
   const todosForDay = (day: Date) => todos.filter((todo) => todo.dueDate === dateKey(day))
 
   const title =
     view === 'month'
-      ? capitalize(format(viewDate, 'MMMM yyyy', { locale: it }))
+      ? capitalize(format(viewDate, 'MMMM yyyy', { locale }))
       : view === 'week'
-        ? `${format(week[0]!, 'd MMM', { locale: it })} – ${format(week[6]!, 'd MMM yyyy', { locale: it })}`
-        : capitalize(format(selected, 'EEEE d MMMM yyyy', { locale: it }))
+        ? `${format(week[0]!, 'd MMM', { locale })} – ${format(week[6]!, 'd MMM yyyy', { locale })}`
+        : capitalize(format(selected, 'EEEE d MMMM yyyy', { locale }))
 
   const changeView = (next: CalendarView) => {
     setView(next)
@@ -112,25 +122,25 @@ export function CalendarPage() {
   return (
     <div className="animate-fade-in">
       <PageHeader
-        title="Calendario"
-        subtitle="Eventi e scadenze in un unico posto"
+        title={t('calendar.title')}
+        subtitle={t('calendar.subtitle')}
         action={
           <Button size="sm" onClick={openNew}>
-            <CalendarPlus size={16} /> Evento
+            <CalendarPlus size={16} /> {t('calendar.event')}
           </Button>
         }
       />
 
       <div className="mb-4 flex items-center gap-1.5">
-        <IconButton label="Periodo precedente" onClick={() => move(-1)} className="border border-line">
+        <IconButton label={t('calendar.prev')} onClick={() => move(-1)} className="border border-line">
           <ChevronLeft size={18} />
         </IconButton>
-        <IconButton label="Periodo successivo" onClick={() => move(1)} className="border border-line">
+        <IconButton label={t('calendar.next')} onClick={() => move(1)} className="border border-line">
           <ChevronRight size={18} />
         </IconButton>
         <p className="min-w-0 flex-1 truncate px-1 text-sm font-semibold tracking-tight">{title}</p>
         <Button variant="ghost" size="sm" onClick={goToday}>
-          Oggi
+          {t('common.today')}
         </Button>
       </div>
 
@@ -139,16 +149,16 @@ export function CalendarPage() {
         value={view}
         onChange={changeView}
         options={[
-          { value: 'month', label: 'Mese' },
-          { value: 'week', label: 'Settimana' },
-          { value: 'day', label: 'Giorno' },
+          { value: 'month', label: t('calendar.month') },
+          { value: 'week', label: t('calendar.week') },
+          { value: 'day', label: t('calendar.day') },
         ]}
       />
 
       {view === 'month' ? (
         <div className="mb-5 rounded-2xl border border-line bg-surface p-2 sm:p-3">
           <div className="mb-1 grid grid-cols-7">
-            {['L', 'M', 'M', 'G', 'V', 'S', 'D'].map((label, index) => (
+            {weekdayLabels.map((label, index) => (
               <div key={`${label}-${index}`} className="py-1 text-center text-[10px] font-semibold uppercase text-faint">
                 {label}
               </div>
@@ -168,9 +178,7 @@ export function CalendarPage() {
                   }}
                   className={cn(
                     'relative flex h-12 flex-col items-center justify-start rounded-lg pt-1 text-[12px] transition-colors sm:h-20 sm:items-stretch sm:px-1.5 sm:pt-1',
-                    cell.isSelected
-                      ? 'bg-accent text-accent-ink'
-                      : 'hover:bg-raised',
+                    cell.isSelected ? 'bg-accent text-accent-ink' : 'hover:bg-raised',
                     !cell.inMonth && !cell.isSelected && 'text-faint/50',
                   )}
                 >
@@ -184,17 +192,10 @@ export function CalendarPage() {
                   </span>
                   <span className="mt-1 flex gap-0.5 sm:hidden">
                     {dayEvents.length > 0 ? (
-                      <span
-                        className={cn('h-1 w-1 rounded-full', cell.isSelected ? 'bg-accent-ink' : 'bg-accent')}
-                      />
+                      <span className={cn('h-1 w-1 rounded-full', cell.isSelected ? 'bg-accent-ink' : 'bg-accent')} />
                     ) : null}
                     {dayTodos.length > 0 ? (
-                      <span
-                        className={cn(
-                          'h-1 w-1 rounded-full',
-                          cell.isSelected ? 'bg-accent-ink/70' : 'bg-warning',
-                        )}
-                      />
+                      <span className={cn('h-1 w-1 rounded-full', cell.isSelected ? 'bg-accent-ink/70' : 'bg-warning')} />
                     ) : null}
                   </span>
                   <span className="mt-0.5 hidden min-w-0 flex-col gap-0.5 sm:flex">
@@ -202,11 +203,14 @@ export function CalendarPage() {
                       <span
                         key={event.id}
                         className={cn(
-                          'truncate rounded px-1 py-0.5 text-left text-[9px] font-medium leading-tight',
+                          'flex items-center gap-0.5 truncate rounded px-1 py-0.5 text-left text-[9px] font-medium leading-tight',
                           cell.isSelected ? 'bg-accent-ink/15' : 'bg-raised text-muted',
                         )}
                       >
-                        {event.title}
+                        {event.kind === 'birthday' ? (
+                          <EmojiIcon name="birthday" className="h-2.5 w-2.5 shrink-0" />
+                        ) : null}
+                        <span className="truncate">{event.title}</span>
                       </span>
                     ))}
                     {dayEvents.length > 2 ? (
@@ -252,11 +256,11 @@ export function CalendarPage() {
                   >
                     {format(day, 'd')}
                   </span>
-                  <span className="text-sm font-medium capitalize">{format(day, 'EEEE', { locale: it })}</span>
+                  <span className="text-sm font-medium capitalize">{format(day, 'EEEE', { locale })}</span>
                   <span className="ml-auto text-[11px] text-faint">
                     {dayEvents.length + dayTodos.length === 0
-                      ? 'Libero'
-                      : `${dayEvents.length + dayTodos.length} elementi`}
+                      ? t('common.free')
+                      : t('calendar.eventsCount', { count: dayEvents.length + dayTodos.length })}
                   </span>
                 </button>
                 {dayEvents.length + dayTodos.length > 0 ? (
@@ -265,8 +269,13 @@ export function CalendarPage() {
                       <div key={event.id} className="flex items-center gap-2 text-xs">
                         <span className="h-2 w-2 rounded-full" style={{ background: event.color }} />
                         <span className="truncate">{event.title}</span>
+                        {event.kind === 'birthday' ? (
+                          <EmojiIcon name="birthday" className="h-3.5 w-3.5 shrink-0" />
+                        ) : isRecurringEvent(event) ? (
+                          <Repeat2 size={10} className="shrink-0 text-faint" />
+                        ) : null}
                         <span className="ml-auto shrink-0 text-[10px] text-faint">
-                          {event.allDay ? 'Tutto il giorno' : formatTime(event.start)}
+                          {event.allDay ? t('dash.allDay') : formatTime(event.start)}
                         </span>
                       </div>
                     ))}
@@ -274,7 +283,7 @@ export function CalendarPage() {
                       <div key={todo.id} className="flex items-center gap-2 text-xs text-muted">
                         <span className="h-2 w-2 rounded-full border border-warning" />
                         <span className="truncate">{todo.title}</span>
-                        <span className="ml-auto shrink-0 text-[10px] text-faint">Todo</span>
+                        <span className="ml-auto shrink-0 text-[10px] text-faint">{t('calendar.todo')}</span>
                       </div>
                     ))}
                   </div>
@@ -302,7 +311,7 @@ export function CalendarPage() {
                   : 'border-line bg-surface text-muted hover:text-ink',
               )}
             >
-              <span className="text-[10px] uppercase">{format(day, 'EEE', { locale: it })}</span>
+              <span className="text-[10px] uppercase">{format(day, 'EEE', { locale })}</span>
               <span className="text-base font-semibold">{format(day, 'd')}</span>
             </button>
           ))}
@@ -325,10 +334,12 @@ export function CalendarPage() {
         <div>
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-xs font-semibold uppercase tracking-[0.08em] text-faint">
-              {view === 'week' ? 'Agenda della settimana' : capitalize(format(selected, 'EEEE d MMMM', { locale: it }))}
+              {view === 'week'
+                ? t('calendar.weekAgenda')
+                : capitalize(format(selected, 'EEEE d MMMM', { locale }))}
             </h2>
             <Button variant="ghost" size="sm" onClick={openNew}>
-              <CalendarPlus size={14} /> Aggiungi
+              <CalendarPlus size={14} /> {t('calendar.add')}
             </Button>
           </div>
           {view === 'month' ? (
@@ -345,7 +356,7 @@ export function CalendarPage() {
             />
           ) : (
             <p className="rounded-xl border border-dashed border-line px-4 py-6 text-center text-xs text-muted">
-              Tocca un giorno per vedere l’agenda, oppure apri la vista Giorno.
+              {t('calendar.touchDay')}
             </p>
           )}
         </div>
@@ -379,16 +390,19 @@ function DayAgenda({
   onEdit: (event: CalendarEvent) => void
   onToggleTodo: (id: string) => void
 }) {
+  const { t, locale } = useI18n()
   const items = events.length + todos.length
   return (
     <div className="rounded-2xl border border-line bg-surface">
       <div className="flex items-center justify-between border-b border-line px-4 py-3">
         <div>
-          <p className="text-sm font-semibold capitalize">{format(date, 'EEEE d MMMM', { locale: it })}</p>
-          <p className="text-[11px] text-faint">{items === 0 ? 'Nessun impegno' : `${items} elementi`}</p>
+          <p className="text-sm font-semibold capitalize">{format(date, 'EEEE d MMMM', { locale })}</p>
+          <p className="text-[11px] text-faint">
+            {items === 0 ? t('calendar.noItems') : t('calendar.eventsCount', { count: items })}
+          </p>
         </div>
         <Button variant="soft" size="sm" onClick={onNew}>
-          <CalendarPlus size={14} /> Evento
+          <CalendarPlus size={14} /> {t('calendar.event')}
         </Button>
       </div>
 
@@ -396,31 +410,34 @@ function DayAgenda({
         <div className="px-4 py-8">
           <EmptyState
             icon={<CalendarDays size={19} />}
-            title="Giornata libera"
-            description="Nessun evento o scadenza per questo giorno."
+            title={t('calendar.freeTitle')}
+            description={t('calendar.freeDesc')}
             className="border-0 py-2"
           />
         </div>
       ) : (
         <div className="divide-y divide-line">
-          {events.map((event) => (
-            <div
-              key={event.id}
-              className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-raised/40"
-            >
+          {events.map((event) => {
+            const occurrence = eventOccursOn(event, date)
+            return (
+            <div key={event.id} className="flex items-start gap-3 px-4 py-3 transition-colors hover:bg-raised/40">
               <span className="mt-1 h-9 w-1 shrink-0 rounded-full" style={{ background: event.color }} />
               <div className="min-w-0 flex-1">
-                <button
-                  type="button"
-                  onClick={() => onEdit(event)}
-                  className="block w-full text-left"
-                >
-                  <span className="block text-sm font-medium leading-snug">{event.title}</span>
+                <button type="button" onClick={() => onEdit(event)} className="block w-full text-left">
+                  <span className="block text-sm font-medium leading-snug">
+                    {event.kind === 'birthday' ? (
+                      <EmojiIcon name="birthday" className="mr-1 inline h-4 w-4 align-[-3px]" />
+                    ) : null}
+                    {event.title}
+                    {occurrence && occurrence.age !== null
+                      ? ` · ${t('calendar.turnsAge', { age: occurrence.age })}`
+                      : ''}
+                  </span>
                   <span className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-muted">
                     <span className="inline-flex items-center gap-1">
                       <Clock size={11} />
                       {event.allDay
-                        ? 'Tutto il giorno'
+                        ? t('dash.allDay')
                         : `${formatTime(event.start)} – ${formatTime(event.end)}`}
                     </span>
                     {event.location ? (
@@ -430,6 +447,11 @@ function DayAgenda({
                     ) : null}
                     {!event.allDay && event.end ? (
                       <span>{formatHumanDuration((Date.parse(event.end) - Date.parse(event.start)) / 1000)}</span>
+                    ) : null}
+                    {isRecurringEvent(event) ? (
+                      <span className="inline-flex items-center gap-1" title={t('event.recurrence')}>
+                        <Repeat2 size={11} />
+                      </span>
                     ) : null}
                   </span>
                   {event.description ? (
@@ -443,19 +465,20 @@ function DayAgenda({
                     to={`/notes/${event.linkedNoteId}`}
                     className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-accent hover:underline"
                   >
-                    <Link2 size={11} /> Nota collegata
+                    <Link2 size={11} /> {t('calendar.linkedNote')}
                   </Link>
                 ) : null}
               </div>
             </div>
-          ))}
+            )
+          })}
 
           {todos.map((todo) => (
             <div key={todo.id} className="flex items-center gap-3 px-4 py-3">
               <button
                 type="button"
                 onClick={() => onToggleTodo(todo.id)}
-                aria-label="Completa todo"
+                aria-label={t('calendar.completeTodo')}
                 className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-line text-transparent hover:border-accent hover:text-accent"
               >
                 <Check size={13} />
@@ -463,12 +486,12 @@ function DayAgenda({
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium">{todo.title}</p>
                 <p className={cn('text-[11px]', isOverdue(todo.dueDate) ? 'text-danger' : 'text-muted')}>
-                  Todo in scadenza
+                  {t('calendar.todoDue')}
                   {todo.tags.length > 0 ? ` · #${todo.tags[0]}` : ''}
                 </p>
               </div>
               <span className="rounded-md bg-warning/10 px-1.5 py-0.5 text-[10px] font-medium text-warning">
-                Todo
+                {t('calendar.todo')}
               </span>
             </div>
           ))}

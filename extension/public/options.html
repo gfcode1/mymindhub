@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <main>
+      <h1 data-i18n="settingsTitle">Impostazioni BinHub Capture</h1>
+      <p class="lead" data-i18n="setupDesc"></p>
+
+      <section class="card">
+        <label for="app-url" data-i18n="appUrl">URL di BinHub</label>
+        <input id="app-url" type="url" autocomplete="url" spellcheck="false" />
+        <p class="hint" data-i18n="appUrlHint"></p>
+        <label class="check">
+          <input id="open-background" type="checkbox" />
+          <span data-i18n="openInBackground"></span>
+        </label>
+        <p class="hint" data-i18n="settingsHint"></p>
+        <div class="row">
+          <button id="save" data-i18n="save">Salva</button>
+          <button id="open-app" class="secondary" data-i18n="testOpen">Apri BinHub</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2 data-i18n="queue">Coda</h2>
+        <p id="queue-status" class="status"></p>
+        <p id="permission-status" class="hint"></p>
+        <p class="hint" data-i18n="queueHelp"></p>
+        <div class="row">
+          <button id="retry" class="secondary" data-i18n="retry">Riprova</button>
+          <button id="clear" class="danger" data-i18n="clearQueue">Svuota coda</button>
+        </div>
+      </section>
+
+      <p id="message" class="message" role="status"></p>
+    </main>
+    <script src="options.js"></script>
+  </body>
+</html>

@@ -1,26 +1,6 @@
 sincronizzazione network locale via webrtc o simili senza server
 encriptazione dati 
-gestione compleanni e riccorenze
- habit tracker
-gestione spese e budget
 agente ai per cercare ( rag) e per eseguire azioni ( aggiungere elementi etc) via linguaggio naturale con api compatibili openrouter o opencode go
-internazionalizzazione italiano inglese
-welcome page
-gestione sveglie
-estensione browser per salvare preferiti e password e altro
-tasto che salva dalla clipboard del sistema il contenuto nel modo piu appropriato
-usare le webspeechapi (se disponibili) oer fare la trascrizione dei vocali e per usare la voce ( dettato) invece che scrivere nei vari campi come note
-usare openmoji colorate come icone nell'app
+password manager con vault cifrato e autofill (l’estensione per bookmark, note, reader e screenshot è implementata)
 app desktop e mobile?
 inserire una modalità ai nelle note per modificare/tradurre/controllorae il contenuto
-whitboard con disegno
-Tracker Spese Veloci / Budget essenziale: Se vuoi evitare app esterne, un log minimale per tracciare uscite ricorrenti o spese quotidiane veloci.
-
-Archivio / Personal Storage: Una sezione vault dove conservare documenti essenziali, checklist riutilizzabili (es. "Checklist valigia", "Passaggi per rilascio progetto").
-Read-it-Later / Reader Mode per i Bookmark: Per i segnalibri salvati, la possibilità di estrarre e salvare il testo in locale (offline-first) con stato di lettura (Da leggere, In corso, Archiviato).
-Backlinking e Connessioni (Graph o Collegamenti Bidirezionali): Permettere di collegare una nota a un task, un bookmark a un progetto, o una nota a un'altra nota (tramite tag, riferimenti diretti o @mention).
-Daily Journal / Registro Log di Fine Giornata: Un micro-journal (bastano 2-3 domande o campi testo) per annotare a fine giornata cosa si è completato, eventuali blocchi o riflessioni veloci.
-Time Tracker / Timer Pomodoro incorporato: Possibilità di avviare un timer direttamente da un task o una nota per tracciare quanto tempo richiede una determinata attività.
-
-Log del Tempo / Time Audit: Visualizzare a fine settimana o mese un grafico semplice che mostri dove è finito il tempo (es. Progetti vs Mantentimento vs Studio).
-

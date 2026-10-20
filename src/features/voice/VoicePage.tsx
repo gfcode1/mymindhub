@@ -14,10 +14,15 @@ import {
 import { toast } from 'sonner'
 import { PageHeader, EmptyState } from '@/components/ui/PageHeader'
 import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Field'
+import { Input, Textarea } from '@/components/ui/Field'
 import { Modal } from '@/components/ui/Modal'
 import { TagInput, TagList } from '@/components/ui/TagInput'
+import { SpeechConsentDialog } from '@/components/ui/SpeechConsentDialog'
+import { EntityLinks } from '@/features/links/EntityLinks'
 import { useTags, useVoiceNotes } from '@/hooks/useData'
+import { useI18n } from '@/hooks/useI18n'
+import { useSpeech } from '@/hooks/useSpeech'
+import { grantSpeechConsent, hasSpeechConsent, mergeTranscript } from '@/lib/speech'
 import { useStorageEstimate } from '@/hooks/usePwa'
 import {
   createVoiceNote,
@@ -27,6 +32,7 @@ import {
 } from '@/db/seed'
 import { formatBytes, formatDate, formatDuration } from '@/lib/dates'
 import { downloadBlob, truncate } from '@/lib/utils'
+import type { MessageKey } from '@/lib/i18n'
 import type { VoiceNote } from '@/types/models'
 
 const MIME_CANDIDATES = [
@@ -72,11 +78,12 @@ async function extractWaveform(blob: Blob, bars = 56): Promise<number[]> {
   }
 }
 
-function defaultTitle(): string {
-  return `Nota vocale · ${formatDate(new Date(), 'd MMM, HH:mm')}`
+function defaultTitle(t: (key: MessageKey, params?: Record<string, string | number>) => string): string {
+  return t('voice.defaultTitle', { date: formatDate(new Date(), 'd MMM, HH:mm') })
 }
 
 export function VoicePage() {
+  const { t, language } = useI18n()
   const voices = useVoiceNotes()
   const tags = useTags()
   const { refresh } = useStorageEstimate()
@@ -105,9 +112,21 @@ export function VoicePage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [previewDuration, setPreviewDuration] = useState(0)
   const [previewWaveform, setPreviewWaveform] = useState<number[]>([])
-  const [previewTitle, setPreviewTitle] = useState(defaultTitle)
+  const [previewTitle, setPreviewTitle] = useState(() => defaultTitle(t))
   const [previewTags, setPreviewTags] = useState<string[]>([])
   const [editing, setEditing] = useState<VoiceNote | null>(null)
+  const [transcript, setTranscript] = useState('')
+  const [transcribe, setTranscribe] = useState(false)
+  const [speechConsentOpen, setSpeechConsentOpen] = useState(false)
+  const transcriptRef = useRef('')
+  const lastSpeechError = useRef<string | null>(null)
+  const speech = useSpeech({
+    language,
+    onFinal: (text) => {
+      transcriptRef.current = mergeTranscript([transcriptRef.current, text])
+      setTranscript(transcriptRef.current)
+    },
+  })
 
   const cleanupRecorder = () => {
     if (timerRef.current) window.clearInterval(timerRef.current)
@@ -158,7 +177,7 @@ export function VoicePage() {
     if (state === 'recording' || state === 'paused') return
     setError('')
     if (typeof MediaRecorder === 'undefined') {
-      setError('La registrazione audio non è supportata da questo browser.')
+      setError(t('voice.unsupported'))
       return
     }
     try {
@@ -193,6 +212,9 @@ export function VoicePage() {
       setElapsed(0)
       setLevels([])
       setState('recording')
+      transcriptRef.current = ''
+      setTranscript('')
+      if (transcribe && speech.supported && hasSpeechConsent()) speech.start()
       recorder.start(250)
       timerRef.current = window.setInterval(() => {
         const paused = pausedAtRef.current ? Date.now() - pausedAtRef.current : 0
@@ -202,7 +224,7 @@ export function VoicePage() {
       }, 200)
       startLevelLoop()
     } catch {
-      setError('Permesso microfono negato o microfono non disponibile.')
+      setError(t('voice.permissionError'))
       cleanupRecorder()
     }
   }
@@ -215,7 +237,7 @@ export function VoicePage() {
     previewUrlRef.current = url
     setPreviewBlob(blob)
     setPreviewUrl(url)
-    setPreviewTitle(defaultTitle())
+    setPreviewTitle(defaultTitle(t))
     setPreviewTags([])
     setPreviewWaveform(await extractWaveform(blob))
     setPreviewDuration(elapsedRef.current)
@@ -225,6 +247,7 @@ export function VoicePage() {
   const pause = () => {
     if (state !== 'recording') return
     recorderRef.current?.pause()
+    if (transcribe) speech.stop()
     pausedAtRef.current = Date.now()
     setState('paused')
   }
@@ -236,6 +259,7 @@ export function VoicePage() {
       pausedAtRef.current = 0
     }
     recorderRef.current?.resume()
+    if (transcribe && speech.supported && hasSpeechConsent()) speech.start()
     setState('recording')
   }
 
@@ -250,10 +274,14 @@ export function VoicePage() {
     const finalElapsed = (Date.now() - startedAtRef.current - pausedTotalRef.current) / 1000
     elapsedRef.current = finalElapsed
     setElapsed(finalElapsed)
+    if (transcribe) speech.stop()
     recorderRef.current?.stop()
   }
 
   const discard = () => {
+    speech.stop()
+    transcriptRef.current = ''
+    setTranscript('')
     if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current)
     previewUrlRef.current = null
     setPreviewUrl(null)
@@ -267,16 +295,25 @@ export function VoicePage() {
   const save = () => {
     if (!previewBlob) return
     const blob = previewBlob
-    const title = previewTitle.trim() || defaultTitle()
+    const title = previewTitle.trim() || defaultTitle(t)
     const duration = previewDuration
     const waveform = previewWaveform
     const mimeType = blob.type
     const voiceTags = previewTags
+    const voiceTranscript = transcript.trim() || null
     discard()
-    void createVoiceNote({ title, blob, mimeType, durationSec: duration, waveform, tags: voiceTags }).then(
+    void createVoiceNote({
+      title,
+      blob,
+      mimeType,
+      durationSec: duration,
+      waveform,
+      tags: voiceTags,
+      transcript: voiceTranscript,
+    }).then(
       () => {
         void refresh()
-        toast.success('Nota vocale salvata')
+        toast.success(t('voice.saved'))
       },
     )
   }
@@ -290,14 +327,34 @@ export function VoicePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params])
 
+  useEffect(() => {
+    if (!speech.error) {
+      lastSpeechError.current = null
+      return
+    }
+    if (lastSpeechError.current === speech.error) return
+    lastSpeechError.current = speech.error
+    if (speech.error === 'no-speech' || speech.error === 'aborted' || speech.error === 'unsupported') {
+      return
+    }
+    toast.error(
+      speech.error === 'not-allowed'
+        ? t('speech.notAllowed')
+        : speech.error === 'network'
+          ? t('speech.network')
+          : t('speech.unknown'),
+    )
+    speech.clearError()
+  }, [speech.error, speech.clearError, t])
+
   const totalSize = voices.reduce((sum, voice) => sum + voice.blob.size, 0)
   const recording = state === 'recording' || state === 'paused'
 
   return (
     <div className="animate-fade-in">
       <PageHeader
-        title="Vocali"
-        subtitle={`${voices.length} ${voices.length === 1 ? 'registrazione' : 'registrazioni'}${
+        title={t('voice.title')}
+        subtitle={`${voices.length === 1 ? t('voice.countOne', { count: voices.length }) : t('voice.countOther', { count: voices.length })}${
           totalSize > 0 ? ` · ${formatBytes(totalSize)}` : ''
         }`}
       />
@@ -305,27 +362,41 @@ export function VoicePage() {
       <div className="mb-7 rounded-3xl border border-line bg-surface p-5">
         {state === 'preview' && previewUrl ? (
           <div className="animate-pop-in">
-            <p className="text-xs font-semibold uppercase tracking-wide text-faint">Anteprima</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-faint">{t('voice.preview')}</p>
             <audio src={previewUrl} controls className="mt-3 w-full" />
             <Waveform peaks={previewWaveform} className="mt-3" />
             <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto]">
               <Input
                 value={previewTitle}
                 onChange={(event) => setPreviewTitle(event.target.value)}
-                aria-label="Titolo della nota vocale"
+                aria-label={t('voice.titleAria')}
               />
               <div className="flex gap-2">
                 <Button variant="ghost" onClick={discard}>
-                  <RotateCcw size={16} /> Scarta
+                  <RotateCcw size={16} /> {t('voice.discard')}
                 </Button>
                 <Button onClick={save}>
-                  <Mic size={16} /> Salva
+                  <Mic size={16} /> {t('voice.save')}
                 </Button>
               </div>
             </div>
             <div className="mt-3">
               <TagInput value={previewTags} onChange={setPreviewTags} suggestions={tags.map((tag) => tag.name)} />
             </div>
+            <label className="mt-3 block">
+              <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted">
+                {t('voice.transcript')}
+              </span>
+              <Textarea
+                value={transcript}
+                onChange={(event) => {
+                  setTranscript(event.target.value)
+                  transcriptRef.current = event.target.value
+                }}
+                placeholder={t('voice.transcriptPlaceholder')}
+                rows={3}
+              />
+            </label>
             <p className="mt-2 text-[11px] text-faint">
               {formatDuration(previewDuration)} · {formatBytes(previewBlob?.size ?? 0)}
             </p>
@@ -342,7 +413,7 @@ export function VoicePage() {
                   if (recording) stop()
                   else void start()
                 }}
-                aria-label={recording ? 'Ferma registrazione' : 'Inizia registrazione'}
+                aria-label={recording ? t('voice.stopAria') : t('voice.start')}
                 className={`relative flex h-20 w-20 items-center justify-center rounded-full transition-all active:scale-95 ${
                   recording
                     ? 'bg-danger text-white shadow-[0_10px_30px_-10px_var(--danger)]'
@@ -358,20 +429,20 @@ export function VoicePage() {
             </p>
             <p className="mt-1 text-xs text-muted">
               {state === 'recording'
-                ? 'Registrazione in corso…'
+                ? t('voice.recording')
                 : state === 'paused'
-                  ? 'In pausa'
-                  : 'Tocca il microfono per iniziare'}
+                  ? t('voice.paused')
+                  : t('voice.tapStart')}
             </p>
 
             {recording ? (
               <div className="mt-4 flex items-center gap-2">
                 <Button variant="secondary" size="sm" onClick={state === 'paused' ? resume : pause}>
                   {state === 'paused' ? <Play size={15} /> : <Pause size={15} />}
-                  {state === 'paused' ? 'Riprendi' : 'Pausa'}
+                  {state === 'paused' ? t('voice.resume') : t('voice.pause')}
                 </Button>
                 <Button variant="danger" size="sm" onClick={stop}>
-                  <Square size={14} /> Ferma
+                  <Square size={14} /> {t('voice.stop')}
                 </Button>
               </div>
             ) : null}
@@ -388,6 +459,45 @@ export function VoicePage() {
               </div>
             ) : null}
 
+            {speech.supported ? (
+              <label className="mt-4 flex w-full items-start gap-2.5 rounded-xl border border-line bg-canvas/40 px-3 py-2.5 text-left">
+                <input
+                  type="checkbox"
+                  checked={transcribe}
+                  onChange={(event) => {
+                    if (!event.target.checked) {
+                      setTranscribe(false)
+                      speech.stop()
+                      return
+                    }
+                    if (!hasSpeechConsent()) {
+                      setSpeechConsentOpen(true)
+                      return
+                    }
+                    setTranscribe(true)
+                    if (state === 'recording') speech.start()
+                  }}
+                  className="mt-0.5 h-4 w-4 accent-[var(--accent)]"
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium">{t('voice.transcribe')}</span>
+                  <span className="block text-[11px] leading-relaxed text-muted">{t('voice.transcribeHint')}</span>
+                </span>
+              </label>
+            ) : null}
+
+            {transcribe && (transcript || speech.interim) ? (
+              <div className="mt-3 w-full rounded-xl border border-line bg-canvas/50 p-3 text-left">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-faint">
+                  {t('voice.transcript')}
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-muted">
+                  {transcript}
+                  {speech.interim ? ` ${speech.interim}` : ''}
+                </p>
+              </div>
+            ) : null}
+
             {error ? <p className="mt-3 text-center text-xs text-danger">{error}</p> : null}
           </div>
         )}
@@ -396,8 +506,8 @@ export function VoicePage() {
       {voices.length === 0 ? (
         <EmptyState
           icon={<Volume2 size={20} />}
-          title="Nessuna nota vocale"
-          description="Registra un’idea mentre sei in movimento. L’audio resta salvato solo sul dispositivo."
+          title={t('voice.empty')}
+          description={t('voice.emptyDesc')}
         />
       ) : (
         <div className="space-y-2">
@@ -408,9 +518,9 @@ export function VoicePage() {
               onEdit={() => setEditing(voice)}
               onDelete={() => {
                 void deleteVoiceNote(voice.id).then(() => {
-                  toast('Nota vocale eliminata', {
+                  toast(t('voice.deleted'), {
                     action: {
-                      label: 'Annulla',
+                      label: t('common.undo'),
                       onClick: () => void restoreVoiceNote(voice.id),
                     },
                   })
@@ -421,13 +531,23 @@ export function VoicePage() {
         </div>
       )}
 
+      <SpeechConsentDialog
+        open={speechConsentOpen}
+        onAccept={() => {
+          grantSpeechConsent()
+          setTranscribe(true)
+          if (state === 'recording') speech.start()
+        }}
+        onClose={() => setSpeechConsentOpen(false)}
+      />
+
       <EditVoiceModal
         voice={editing}
         onClose={() => setEditing(null)}
-        onSave={(title, voiceTags) => {
+        onSave={(title, voiceTags, transcriptValue) => {
           if (!editing) return
-          void updateVoiceNote(editing.id, { title, tags: voiceTags }).then(() => {
-            toast.success('Nota aggiornata')
+          void updateVoiceNote(editing.id, { title, tags: voiceTags, transcript: transcriptValue }).then(() => {
+            toast.success(t('voice.updated'))
             setEditing(null)
           })
         }}
@@ -483,6 +603,7 @@ function VoiceCard({
   onEdit: () => void
   onDelete: () => void
 }) {
+  const { t } = useI18n()
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [url, setUrl] = useState<string | null>(null)
   const [playing, setPlaying] = useState(false)
@@ -531,7 +652,7 @@ function VoiceCard({
       await audio.play()
       setPlaying(true)
     } catch {
-      toast.error('Impossibile riprodurre l’audio')
+      toast.error(t('voice.playError'))
     }
   }
 
@@ -549,7 +670,7 @@ function VoiceCard({
         <button
           type="button"
           onClick={() => void toggle()}
-          aria-label={playing ? 'Pausa' : 'Riproduci'}
+          aria-label={playing ? t('voice.pauseAudio') : t('voice.play')}
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-accent-soft text-accent transition-transform active:scale-95"
         >
           {playing ? <Pause size={18} className="fill-current" /> : <Play size={18} className="ml-0.5 fill-current" />}
@@ -561,18 +682,18 @@ function VoiceCard({
             {formatBytes(voice.blob.size)}
           </p>
         </div>
-        <Button variant="ghost" size="icon" onClick={onEdit} aria-label="Rinomina">
+        <Button variant="ghost" size="icon" onClick={onEdit} aria-label={t('voice.rename')}>
           <Pencil size={15} />
         </Button>
         <Button
           variant="ghost"
           size="icon"
-          aria-label="Scarica audio"
+          aria-label={t('voice.downloadAudio')}
           onClick={() => downloadBlob(voice.blob, `${voice.title}.${extensionFor(voice.mimeType)}`)}
         >
           <Download size={15} />
         </Button>
-        <Button variant="ghost" size="icon" className="text-danger" onClick={onDelete} aria-label="Elimina">
+        <Button variant="ghost" size="icon" className="text-danger" onClick={onDelete} aria-label={t('voice.delete')}>
           <Trash2 size={15} />
         </Button>
       </div>
@@ -592,29 +713,34 @@ function EditVoiceModal({
 }: {
   voice: VoiceNote | null
   onClose: () => void
-  onSave: (title: string, tags: string[]) => void
+  onSave: (title: string, tags: string[], transcript: string | null) => void
 }) {
   const tags = useTags()
+  const { t } = useI18n()
   const [title, setTitle] = useState('')
   const [values, setValues] = useState<string[]>([])
+  const [transcript, setTranscript] = useState('')
 
   useEffect(() => {
     if (!voice) return
     setTitle(voice.title)
     setValues(voice.tags)
+    setTranscript(voice.transcript ?? '')
   }, [voice])
 
   return (
     <Modal
       open={voice !== null}
       onClose={onClose}
-      title="Modifica nota vocale"
+      title={t('voice.editTitle')}
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>
-            Annulla
+            {t('common.cancel')}
           </Button>
-          <Button onClick={() => onSave(title.trim() || defaultTitle(), values)}>Salva</Button>
+          <Button onClick={() => onSave(title.trim() || defaultTitle(t), values, transcript.trim() || null)}>
+            {t('common.save')}
+          </Button>
         </>
       }
     >
@@ -622,10 +748,22 @@ function EditVoiceModal({
         <Input
           value={title}
           onChange={(event) => setTitle(event.target.value)}
-          aria-label="Titolo della nota vocale"
+          aria-label={t('voice.titleAria')}
           autoFocus
         />
         <TagInput value={values} onChange={setValues} suggestions={tags.map((tag) => tag.name)} />
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-muted">
+            {t('voice.transcript')}
+          </span>
+          <Textarea
+            value={transcript}
+            onChange={(event) => setTranscript(event.target.value)}
+            placeholder={t('voice.transcriptPlaceholder')}
+            rows={4}
+          />
+        </label>
+        {voice ? <EntityLinks type="voice" id={voice.id} /> : null}
       </div>
     </Modal>
   )

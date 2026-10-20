@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header>
+      <h1 data-i18n="popupTitle">BinHub Capture</h1>
+      <span id="queue-badge" class="badge hidden"></span>
+    </header>
+
+    <div id="setup" class="banner hidden">
+      <div>
+        <strong data-i18n="setupTitle">Configura BinHub</strong>
+        <p data-i18n="setupDesc"></p>
+      </div>
+      <button id="setup-action" class="secondary" data-i18n="setupAction"></button>
+    </div>
+
+    <p id="status" class="status"></p>
+
+    <section id="selection-box" class="selection hidden">
+      <span class="label" data-i18n="selectionLabel">Selezione</span>
+      <p id="selection-preview"></p>
+    </section>
+
+    <section class="grid">
+      <button id="bookmark" data-i18n="bookmark"></button>
+      <button id="note" data-i18n="note"></button>
+      <button id="todo" data-i18n="todo"></button>
+      <button id="reader" data-i18n="reader"></button>
+      <button id="clipboard" data-i18n="clipboard"></button>
+      <button id="screenshot" data-i18n="screenshot"></button>
+    </section>
+
+    <section id="clipboard-panel" class="panel hidden">
+      <label for="clipboard-text" data-i18n="clipboardPreview"></label>
+      <textarea id="clipboard-text" rows="4"></textarea>
+      <div class="row">
+        <button id="clipboard-note" class="secondary" data-i18n="saveAsNote"></button>
+        <button id="clipboard-todo" class="secondary" data-i18n="saveAsTodo"></button>
+      </div>
+    </section>
+
+    <footer>
+      <button id="open-app" class="secondary" data-i18n="openApp"></button>
+      <button id="retry" class="ghost" data-i18n="retry"></button>
+      <button id="options" class="ghost" data-i18n="options"></button>
+    </footer>
+
+    <p id="message" class="message" role="status"></p>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

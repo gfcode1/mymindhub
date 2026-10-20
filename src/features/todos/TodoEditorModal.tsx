@@ -5,7 +5,9 @@ import { Button } from '@/components/ui/Button'
 import { Field, Input, Select, Textarea } from '@/components/ui/Field'
 import { Modal } from '@/components/ui/Modal'
 import { TagInput } from '@/components/ui/TagInput'
+import { EntityLinks } from '@/features/links/EntityLinks'
 import { useTags } from '@/hooks/useData'
+import { useI18n } from '@/hooks/useI18n'
 import { createTodo, deleteTodo, restoreTodo, updateTodo } from '@/db/seed'
 import { toDateInput, todayKey } from '@/lib/dates'
 import { uid } from '@/lib/utils'
@@ -14,11 +16,13 @@ import type { Priority, Subtask, Todo } from '@/types/models'
 interface TodoEditorProps {
   open: boolean
   todo: Todo | null
+  initial?: { title?: string; notes?: string } | null
   onClose: () => void
 }
 
-export function TodoEditorModal({ open, todo, onClose }: TodoEditorProps) {
+export function TodoEditorModal({ open, todo, initial, onClose }: TodoEditorProps) {
   const tags = useTags()
+  const { t } = useI18n()
   const [title, setTitle] = useState('')
   const [notes, setNotes] = useState('')
   const [dueDate, setDueDate] = useState('')
@@ -40,14 +44,14 @@ export function TodoEditorModal({ open, todo, onClose }: TodoEditorProps) {
       setTodoTags(todo.tags)
       setSubtasks(todo.subtasks)
     } else {
-      setTitle('')
-      setNotes('')
+      setTitle(initial?.title ?? '')
+      setNotes(initial?.notes ?? '')
       setDueDate('')
       setPriority('normal')
       setTodoTags([])
       setSubtasks([])
     }
-  }, [open, todo])
+  }, [open, todo, initial])
 
   const addSubtask = () => {
     const value = newSubtask.trim()
@@ -58,7 +62,7 @@ export function TodoEditorModal({ open, todo, onClose }: TodoEditorProps) {
 
   const save = () => {
     if (!title.trim()) {
-      setError('Il titolo è obbligatorio.')
+      setError(t('todo.titleRequired'))
       return
     }
     const payload = {
@@ -71,12 +75,12 @@ export function TodoEditorModal({ open, todo, onClose }: TodoEditorProps) {
     }
     if (todo) {
       void updateTodo(todo.id, payload).then(() => {
-        toast.success('Todo aggiornato')
+        toast.success(t('todo.updated'))
         onClose()
       })
     } else {
       void createTodo(payload).then(() => {
-        toast.success('Todo creato')
+        toast.success(t('todo.created'))
         onClose()
       })
     }
@@ -85,8 +89,8 @@ export function TodoEditorModal({ open, todo, onClose }: TodoEditorProps) {
   const remove = () => {
     if (!todo) return
     void deleteTodo(todo.id).then(() => {
-      toast('Todo eliminato', {
-        action: { label: 'Annulla', onClick: () => void restoreTodo(todo.id) },
+      toast(t('todos.deleted'), {
+        action: { label: t('common.undo'), onClick: () => void restoreTodo(todo.id) },
       })
       onClose()
     })
@@ -96,28 +100,28 @@ export function TodoEditorModal({ open, todo, onClose }: TodoEditorProps) {
     <Modal
       open={open}
       onClose={onClose}
-      title={todo ? 'Modifica todo' : 'Nuovo todo'}
-      description={todo ? undefined : 'Aggiungi dettagli, scadenza e sotto-attività.'}
+      title={todo ? t('todo.edit') : t('todo.new')}
+      description={todo ? undefined : t('todo.newDesc')}
       footer={
         <div className="flex w-full items-center justify-between gap-2">
           {todo ? (
             <Button variant="ghost" className="text-danger" onClick={remove}>
-              <Trash2 size={16} /> Elimina
+              <Trash2 size={16} /> {t('common.delete')}
             </Button>
           ) : (
             <span />
           )}
           <div className="flex gap-2">
             <Button variant="ghost" onClick={onClose}>
-              Annulla
+              {t('common.cancel')}
             </Button>
-            <Button onClick={save}>{todo ? 'Salva' : 'Crea'}</Button>
+            <Button onClick={save}>{todo ? t('common.save') : t('common.create')}</Button>
           </div>
         </div>
       }
     >
       <div className="space-y-4 pb-1">
-        <Field label="Titolo" htmlFor="todo-title">
+        <Field label={t('todo.title')} htmlFor="todo-title">
           <Input
             id="todo-title"
             value={title}
@@ -125,14 +129,14 @@ export function TodoEditorModal({ open, todo, onClose }: TodoEditorProps) {
               setTitle(event.target.value)
               setError('')
             }}
-            placeholder="Cosa devi fare?"
+            placeholder={t('todo.titlePlaceholder')}
             autoFocus
           />
           {error ? <p className="mt-1.5 text-xs text-danger">{error}</p> : null}
         </Field>
 
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Scadenza" htmlFor="todo-due">
+          <Field label={t('todo.due')} htmlFor="todo-due">
             <Input
               id="todo-due"
               type="date"
@@ -140,33 +144,35 @@ export function TodoEditorModal({ open, todo, onClose }: TodoEditorProps) {
               onChange={(event) => setDueDate(event.target.value)}
             />
           </Field>
-          <Field label="Priorità" htmlFor="todo-priority">
+          <Field label={t('todo.priority')} htmlFor="todo-priority">
             <Select
               id="todo-priority"
               value={priority}
               onChange={(event) => setPriority(event.target.value as Priority)}
             >
-              <option value="low">Bassa</option>
-              <option value="normal">Normale</option>
-              <option value="high">Alta</option>
+              <option value="low">{t('todo.priorityLow')}</option>
+              <option value="normal">{t('todo.priorityNormal')}</option>
+              <option value="high">{t('todo.priorityHigh')}</option>
             </Select>
           </Field>
         </div>
 
-        <Field label="Note" htmlFor="todo-notes">
+        <Field label={t('todo.notes')} htmlFor="todo-notes">
           <Textarea
             id="todo-notes"
             value={notes}
             onChange={(event) => setNotes(event.target.value)}
-            placeholder="Dettagli, contesto, link…"
+            placeholder={t('todo.notesPlaceholder')}
             rows={3}
           />
         </Field>
 
         <div>
           <div className="mb-1.5 flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wide text-muted">Sotto-attività</span>
-            <span className="text-[11px] text-faint">{subtasks.filter((item) => item.done).length}/{subtasks.length}</span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted">{t('todo.subtasks')}</span>
+            <span className="text-[11px] text-faint">
+              {subtasks.filter((item) => item.done).length}/{subtasks.length}
+            </span>
           </div>
           <div className="space-y-1.5">
             {subtasks.map((subtask) => (
@@ -183,7 +189,7 @@ export function TodoEditorModal({ open, todo, onClose }: TodoEditorProps) {
                   className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors ${
                     subtask.done ? 'border-accent bg-accent text-accent-ink' : 'border-line text-transparent'
                   }`}
-                  aria-label={subtask.done ? 'Segna da fare' : 'Segna completata'}
+                  aria-label={subtask.done ? t('todo.markUndone') : t('todo.markDone')}
                 >
                   <Check size={12} />
                 </button>
@@ -194,7 +200,7 @@ export function TodoEditorModal({ open, todo, onClose }: TodoEditorProps) {
                   type="button"
                   onClick={() => setSubtasks((current) => current.filter((item) => item.id !== subtask.id))}
                   className="rounded p-1 text-faint hover:text-danger"
-                  aria-label="Rimuovi sotto-attività"
+                  aria-label={t('todo.removeSubtask')}
                 >
                   <X size={13} />
                 </button>
@@ -211,16 +217,16 @@ export function TodoEditorModal({ open, todo, onClose }: TodoEditorProps) {
                   addSubtask()
                 }
               }}
-              placeholder="Aggiungi un passaggio…"
+              placeholder={t('todo.subtaskPlaceholder')}
               className="h-9 text-sm"
             />
-            <Button variant="secondary" size="sm" onClick={addSubtask} aria-label="Aggiungi sotto-attività">
+            <Button variant="secondary" size="sm" onClick={addSubtask} aria-label={t('todo.addSubtask')}>
               <Plus size={15} />
             </Button>
           </div>
         </div>
 
-        <Field label="Tag" hint="Separa con virgola o Invio.">
+        <Field label={t('todo.tags')} hint={t('todo.tagsHint')}>
           <TagInput
             value={todoTags}
             onChange={setTodoTags}
@@ -228,13 +234,15 @@ export function TodoEditorModal({ open, todo, onClose }: TodoEditorProps) {
           />
         </Field>
 
+        {todo ? <EntityLinks type="todo" id={todo.id} /> : null}
+
         {!todo ? (
           <button
             type="button"
             onClick={() => setDueDate(todayKey())}
             className="text-xs font-medium text-accent hover:underline"
           >
-            Imposta per oggi
+            {t('todo.setToday')}
           </button>
         ) : null}
       </div>

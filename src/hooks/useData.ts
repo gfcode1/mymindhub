@@ -3,7 +3,22 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import MiniSearch from 'minisearch'
 import { db } from '@/db/db'
 import { DEFAULT_SETTINGS, type AppSettings } from '@/types/models'
-import type { Bookmark, CalendarEvent, Note, Todo, VoiceNote } from '@/types/models'
+import type {
+  Alarm,
+  Bookmark,
+  Budget,
+  CalendarEvent,
+  Expense,
+  Habit,
+  HabitLog,
+  JournalEntry,
+  Note,
+  TimeEntry,
+  Todo,
+  VaultItem,
+  VoiceNote,
+  WhiteboardMeta,
+} from '@/types/models'
 
 export function useSettings(): { settings: AppSettings; loaded: boolean } {
   const settings = useLiveQuery(() => db.settings.get('app'), [])
@@ -60,6 +75,10 @@ export function useTodos(): Todo[] {
   )
 }
 
+export function useBookmark(id: string | undefined): Bookmark | null | undefined {
+  return useLiveQuery(() => (id ? db.bookmarks.get(id) : undefined), [id])
+}
+
 export function useBookmarks(options: { archived?: boolean } = {}): Bookmark[] {
   const archived = options.archived ?? false
   return (
@@ -106,6 +125,154 @@ export function useVoiceNotes(): VoiceNote[] {
   )
 }
 
+export function useJournalEntries(): JournalEntry[] {
+  return (
+    useLiveQuery(
+      async () => {
+        const all = await db.journalEntries.toArray()
+        return all
+          .filter((entry) => !entry.deletedAt)
+          .sort((a, b) => b.date.localeCompare(a.date))
+      },
+      [],
+      [],
+    ) ?? []
+  )
+}
+
+export function useJournalEntry(date: string): JournalEntry | null {
+  const entries = useJournalEntries()
+  return entries.find((entry) => entry.date === date) ?? null
+}
+
+export function useHabits(): Habit[] {
+  return (
+    useLiveQuery(
+      async () => {
+        const all = await db.habits.toArray()
+        return all
+          .filter((habit) => !habit.deletedAt)
+          .sort((a, b) => {
+            if (a.archived !== b.archived) return a.archived ? 1 : -1
+            return a.createdAt.localeCompare(b.createdAt)
+          })
+      },
+      [],
+      [],
+    ) ?? []
+  )
+}
+
+export function useHabitLogs(): HabitLog[] {
+  return (
+    useLiveQuery(
+      async () => {
+        const all = await db.habitLogs.toArray()
+        return all.filter((log) => !log.deletedAt)
+      },
+      [],
+      [],
+    ) ?? []
+  )
+}
+
+export function useAlarms(): Alarm[] {
+  return (
+    useLiveQuery(
+      async () => {
+        const all = await db.alarms.toArray()
+        return all
+          .filter((alarm) => !alarm.deletedAt)
+          .sort((a, b) => a.time.localeCompare(b.time))
+      },
+      [],
+      [],
+    ) ?? []
+  )
+}
+
+export function useWhiteboards(): WhiteboardMeta[] {
+  return (
+    useLiveQuery(
+      async () => {
+        const all = await db.whiteboards.toArray()
+        return all
+          .filter((board) => !board.deletedAt)
+          .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+      },
+      [],
+      [],
+    ) ?? []
+  )
+}
+
+export function useWhiteboard(id: string | undefined): WhiteboardMeta | null | undefined {
+  return useLiveQuery(() => (id ? db.whiteboards.get(id) : undefined), [id])
+}
+
+export function useVaultItems(): VaultItem[] {
+  return (
+    useLiveQuery(
+      async () => {
+        const all = await db.vaultItems.toArray()
+        return all
+          .filter((item) => !item.deletedAt)
+          .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+      },
+      [],
+      [],
+    ) ?? []
+  )
+}
+
+export function useExpenses(): Expense[] {
+  return (
+    useLiveQuery(
+      async () => {
+        const all = await db.expenses.toArray()
+        return all
+          .filter((expense) => !expense.deletedAt)
+          .sort((a, b) => {
+            if (a.date !== b.date) return b.date.localeCompare(a.date)
+            return b.createdAt.localeCompare(a.createdAt)
+          })
+      },
+      [],
+      [],
+    ) ?? []
+  )
+}
+
+export function useBudgets(): Budget[] {
+  return (
+    useLiveQuery(
+      async () => {
+        const all = await db.budgets.toArray()
+        return all
+          .filter((budget) => !budget.deletedAt)
+          .sort((a, b) => a.category.localeCompare(b.category))
+      },
+      [],
+      [],
+    ) ?? []
+  )
+}
+
+export function useTimeEntries(): TimeEntry[] {
+  return (
+    useLiveQuery(
+      async () => {
+        const all = await db.timeEntries.toArray()
+        return all
+          .filter((entry) => !entry.deletedAt)
+          .sort((a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt))
+      },
+      [],
+      [],
+    ) ?? []
+  )
+}
+
 export function useTags() {
   return (
     useLiveQuery(async () => {
@@ -134,7 +301,7 @@ export function useOnline(): boolean {
 
 export interface SearchHit {
   id: string
-  type: 'note' | 'todo' | 'bookmark' | 'event' | 'voice'
+  type: 'note' | 'todo' | 'bookmark' | 'event' | 'voice' | 'journal' | 'habit'
   title: string
   subtitle: string
   href: string
@@ -158,6 +325,8 @@ export function useGlobalSearch(query: string): SearchHit[] {
   const bookmarks = useBookmarks({ archived: false })
   const events = useEvents()
   const voices = useVoiceNotes()
+  const journals = useJournalEntries()
+  const habits = useHabits()
 
   const index = useMemo(() => {
     const docs: SearchDoc[] = []
@@ -191,7 +360,7 @@ export function useGlobalSearch(query: string): SearchHit[] {
         id: bookmark.id,
         type: 'bookmark',
         title: bookmark.title,
-        body: `${bookmark.url} ${bookmark.description}`,
+        body: `${bookmark.url} ${bookmark.description} ${bookmark.readerContent}`,
         tags: bookmark.tags.join(' '),
         subtitle: bookmark.url,
         href: '/bookmarks',
@@ -207,6 +376,30 @@ export function useGlobalSearch(query: string): SearchHit[] {
         tags: '',
         subtitle: event.start,
         href: '/calendar',
+      })
+    }
+    for (const entry of journals) {
+      docs.push({
+        uid: `journal:${entry.id}`,
+        id: entry.id,
+        type: 'journal',
+        title: entry.date,
+        body: `${entry.done} ${entry.blockers} ${entry.reflection}`,
+        tags: '',
+        subtitle: entry.done || entry.reflection || entry.blockers,
+        href: '/journal',
+      })
+    }
+    for (const habit of habits) {
+      docs.push({
+        uid: `habit:${habit.id}`,
+        id: habit.id,
+        type: 'habit',
+        title: habit.name,
+        body: '',
+        tags: '',
+        subtitle: habit.schedule === 'daily' ? 'Daily' : 'Weekly',
+        href: '/habits',
       })
     }
     for (const voice of voices) {
@@ -233,7 +426,7 @@ export function useGlobalSearch(query: string): SearchHit[] {
     })
     mini.addAll(docs)
     return mini
-  }, [notes, todos, bookmarks, events, voices])
+  }, [notes, todos, bookmarks, events, voices, journals, habits])
 
   return useMemo(() => {
     const trimmed = query.trim()

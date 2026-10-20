@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router'
+import { useNavigate, useSearchParams } from 'react-router'
 import {
   CalendarDays,
   Check,
@@ -7,6 +7,7 @@ import {
   ListChecks,
   Plus,
   Search,
+  Timer,
   Trash2,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -16,6 +17,8 @@ import { Input } from '@/components/ui/Field'
 import { SegmentedControl } from '@/components/ui/SegmentedControl'
 import { TagList } from '@/components/ui/TagInput'
 import { useTodos } from '@/hooks/useData'
+import { useI18n } from '@/hooks/useI18n'
+import { useUIStore } from '@/hooks/useUI'
 import { createTodo, deleteTodo, restoreTodo, toggleTodo } from '@/db/seed'
 import { isOverdue, relativeDate, todayKey } from '@/lib/dates'
 import { cn } from '@/lib/utils'
@@ -26,11 +29,16 @@ type Filter = 'today' | 'upcoming' | 'all' | 'done'
 
 export function TodosPage() {
   const todos = useTodos()
+  const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
+  const { t, locale, language } = useI18n()
+  const consumeDraft = useUIStore((state) => state.consumeDraft)
+  const draft = useUIStore((state) => state.draft)
   const [filter, setFilter] = useState<Filter>('all')
   const [query, setQuery] = useState('')
   const [editing, setEditing] = useState<Todo | null>(null)
   const [editorOpen, setEditorOpen] = useState(false)
+  const [initial, setInitial] = useState<{ title?: string; notes?: string } | null>(null)
   const [quickTitle, setQuickTitle] = useState('')
   const quickRef = useRef<HTMLInputElement>(null)
   const newHandled = useRef(false)
@@ -38,11 +46,20 @@ export function TodosPage() {
   useEffect(() => {
     if (params.get('new') === '1' && !newHandled.current) {
       newHandled.current = true
+      setInitial(null)
       setEditing(null)
       setEditorOpen(true)
       setParams({}, { replace: true })
     }
   }, [params, setParams])
+
+  useEffect(() => {
+    if (!draft) return
+    setInitial({ title: draft.title, notes: draft.text })
+    setEditing(null)
+    setEditorOpen(true)
+    consumeDraft()
+  }, [draft, consumeDraft])
 
   const today = todayKey()
   const counts = useMemo(
@@ -79,32 +96,32 @@ export function TodosPage() {
     }
     void createTodo({ title: value }).then(() => {
       setQuickTitle('')
-      toast.success('Todo aggiunto')
+      toast.success(t('todos.added'))
     })
   }
 
   const remove = (todo: Todo) => {
     void deleteTodo(todo.id).then(() => {
-      toast('Todo eliminato', {
-        action: { label: 'Annulla', onClick: () => void restoreTodo(todo.id) },
+      toast(t('todos.deleted'), {
+        action: { label: t('common.undo'), onClick: () => void restoreTodo(todo.id) },
       })
     })
+  }
+
+  const openNew = () => {
+    setInitial(null)
+    setEditing(null)
+    setEditorOpen(true)
   }
 
   return (
     <div className="animate-fade-in">
       <PageHeader
-        title="Todo"
-        subtitle={`${counts.all} aperti · ${counts.today} per oggi`}
+        title={t('todos.title')}
+        subtitle={t('todos.openCount', { count: counts.all, today: counts.today })}
         action={
-          <Button
-            size="sm"
-            onClick={() => {
-              setEditing(null)
-              setEditorOpen(true)
-            }}
-          >
-            <Plus size={16} /> Nuovo
+          <Button size="sm" onClick={openNew}>
+            <Plus size={16} /> {t('todos.new')}
           </Button>
         }
       />
@@ -120,12 +137,12 @@ export function TodosPage() {
               quickAdd()
             }
           }}
-          placeholder="Aggiungi un todo e premi Invio…"
+          placeholder={t('todos.quickPlaceholder')}
           className="flex-1"
-          aria-label="Aggiungi un todo"
+          aria-label={t('todos.quickAria')}
         />
         <IconButton
-          label="Aggiungi"
+          label={t('common.add')}
           variant="primary"
           onClick={quickAdd}
           className="h-11 w-11 rounded-xl"
@@ -139,10 +156,10 @@ export function TodosPage() {
           value={filter}
           onChange={setFilter}
           options={[
-            { value: 'today', label: 'Oggi', count: counts.today },
-            { value: 'upcoming', label: 'Prossimi', count: counts.upcoming },
-            { value: 'all', label: 'Tutti', count: counts.all },
-            { value: 'done', label: 'Fatti', count: counts.done },
+            { value: 'today', label: t('todos.filterToday'), count: counts.today },
+            { value: 'upcoming', label: t('todos.filterUpcoming'), count: counts.upcoming },
+            { value: 'all', label: t('todos.filterAll'), count: counts.all },
+            { value: 'done', label: t('todos.filterDone'), count: counts.done },
           ]}
         />
         <div className="relative">
@@ -150,7 +167,7 @@ export function TodosPage() {
           <Input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Cerca nei todo…"
+            placeholder={t('todos.searchPlaceholder')}
             className="pl-9"
             type="search"
           />
@@ -162,31 +179,24 @@ export function TodosPage() {
           icon={<CircleCheckBig size={20} />}
           title={
             query
-              ? 'Nessun risultato'
+              ? t('todos.noResults')
               : filter === 'done'
-                ? 'Nessun todo completato'
+                ? t('todos.noDone')
                 : filter === 'today'
-                  ? 'Niente per oggi'
-                  : 'Tutto in ordine'
+                  ? t('todos.nothingToday')
+                  : t('todos.allDone')
           }
           description={
             query
-              ? 'Prova un altro termine.'
+              ? t('todos.noResultsDesc')
               : filter === 'today'
-                ? 'Nessuna scadenza per oggi. Goditi il momento.'
-                : 'Aggiungi un’attività dalla barra qui sopra.'
+                ? t('todos.nothingTodayDesc')
+                : t('todos.allDoneDesc')
           }
           action={
             filter !== 'done' && !query ? (
-              <Button
-                variant="soft"
-                size="sm"
-                onClick={() => {
-                  setEditing(null)
-                  setEditorOpen(true)
-                }}
-              >
-                <Plus size={15} /> Nuovo todo
+              <Button variant="soft" size="sm" onClick={openNew}>
+                <Plus size={15} /> {t('todos.newTodo')}
               </Button>
             ) : null
           }
@@ -204,7 +214,7 @@ export function TodosPage() {
               <button
                 type="button"
                 onClick={() => void toggleTodo(todo.id)}
-                aria-label={todo.done ? 'Segna come da fare' : 'Segna come completato'}
+                aria-label={todo.done ? t('todos.uncomplete') : t('todos.complete')}
                 className={cn(
                   'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition-colors',
                   todo.done
@@ -218,17 +228,13 @@ export function TodosPage() {
               <button
                 type="button"
                 onClick={() => {
+                  setInitial(null)
                   setEditing(todo)
                   setEditorOpen(true)
                 }}
                 className="min-w-0 flex-1 text-left"
               >
-                <span
-                  className={cn(
-                    'block text-sm font-medium leading-snug',
-                    todo.done && 'line-through',
-                  )}
-                >
+                <span className={cn('block text-sm font-medium leading-snug', todo.done && 'line-through')}>
                   {todo.title}
                 </span>
                 <span className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted">
@@ -240,21 +246,19 @@ export function TodosPage() {
                       )}
                     >
                       <CalendarDays size={11} />
-                      {relativeDate(todo.dueDate)}
+                      {relativeDate(todo.dueDate, locale, language)}
                     </span>
                   ) : (
-                    <span>Senza scadenza</span>
+                    <span>{t('todos.noDue')}</span>
                   )}
                   {todo.priority !== 'normal' ? (
                     <span
                       className={cn(
                         'rounded px-1.5 py-0.5 font-medium',
-                        todo.priority === 'high'
-                          ? 'bg-danger/10 text-danger'
-                          : 'bg-raised text-muted',
+                        todo.priority === 'high' ? 'bg-danger/10 text-danger' : 'bg-raised text-muted',
                       )}
                     >
-                      {todo.priority === 'high' ? 'Alta' : 'Bassa'}
+                      {todo.priority === 'high' ? t('todos.high') : t('todos.low')}
                     </span>
                   ) : null}
                   {todo.subtasks.length > 0 ? (
@@ -263,15 +267,27 @@ export function TodosPage() {
                       {todo.subtasks.filter((subtask) => subtask.done).length}/{todo.subtasks.length}
                     </span>
                   ) : null}
-                  {todo.notes ? <span className="text-faint">· con note</span> : null}
+                  {todo.notes ? <span className="text-faint">· {t('todos.withNotes')}</span> : null}
                 </span>
                 {todo.tags.length > 0 ? <TagList tags={todo.tags} className="mt-1.5" /> : null}
               </button>
 
               <button
                 type="button"
+                onClick={() =>
+                  navigate(`/timer?todo=${todo.id}&label=${encodeURIComponent(todo.title)}`)
+                }
+                aria-label={t('time.startForTodo')}
+                title={t('time.startForTodo')}
+                className="mt-0.5 rounded-lg p-1.5 text-faint transition-colors hover:bg-accent-soft hover:text-accent sm:opacity-0 sm:group-hover:opacity-100"
+              >
+                <Timer size={15} />
+              </button>
+
+              <button
+                type="button"
                 onClick={() => remove(todo)}
-                aria-label="Elimina todo"
+                aria-label={t('todos.delete')}
                 className="mt-0.5 rounded-lg p-1.5 text-faint opacity-100 transition-colors hover:bg-danger/10 hover:text-danger sm:opacity-0 sm:group-hover:opacity-100"
               >
                 <Trash2 size={15} />
@@ -287,16 +303,18 @@ export function TodosPage() {
           onClick={() => setFilter('all')}
           className="mt-4 text-xs font-medium text-accent hover:underline"
         >
-          Vedi tutti i todo aperti
+          {t('todos.seeAll')}
         </button>
       ) : null}
 
       <TodoEditorModal
         open={editorOpen}
         todo={editing}
+        initial={initial}
         onClose={() => {
           setEditorOpen(false)
           setEditing(null)
+          setInitial(null)
         }}
       />
     </div>

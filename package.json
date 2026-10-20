@@ -15,7 +15,11 @@
     "deploy:neocities:dry": "bash scripts/deploy-neocities.sh --dry-run",
     "deploy:neocities:prune": "bash scripts/deploy-neocities.sh --prune",
     "deploy:github": "bash scripts/deploy-github.sh",
-    "deploy:github:dry": "bash scripts/deploy-github.sh --dry-run"
+    "deploy:github:dry": "bash scripts/deploy-github.sh --dry-run",
+    "typecheck:extension": "tsc -p extension/tsconfig.json --noEmit",
+    "build:extension": "node scripts/build-extension.mjs",
+    "zip:extension": "node scripts/zip-extension.mjs",
+    "release:extension": "pnpm build:extension && pnpm zip:extension"
   },
   "dependencies": {
     "@fontsource-variable/inter": "^5.3.0",
@@ -39,13 +43,16 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@mozilla/readability": "^0.6.0",
     "@tailwindcss/vite": "^4.3.3",
     "@testing-library/jest-dom": "^7.0.1",
+    "@types/chrome": "^0.3.5",
     "@types/node": "^24.19.2",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",
     "async-neocities": "^5.0.1",
+    "esbuild": "^0.28.2",
     "fake-indexeddb": "^6.2.6",
     "jsdom": "^30.1.3",
     "oxlint": "^1.81.0",

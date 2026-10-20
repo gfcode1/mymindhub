@@ -1,6 +1,7 @@
 import { useState, type KeyboardEvent } from 'react'
 import { X } from 'lucide-react'
 import { cn, normalizeTags } from '@/lib/utils'
+import { useI18n } from '@/hooks/useI18n'
 
 interface TagInputProps {
   value: string[]
@@ -9,7 +10,8 @@ interface TagInputProps {
   placeholder?: string
 }
 
-export function TagInput({ value, onChange, suggestions = [], placeholder = 'Aggiungi tag…' }: TagInputProps) {
+export function TagInput({ value, onChange, suggestions = [], placeholder }: TagInputProps) {
+  const { t } = useI18n()
   const [draft, setDraft] = useState('')
 
   const commit = () => {
@@ -42,7 +44,7 @@ export function TagInput({ value, onChange, suggestions = [], placeholder = 'Agg
               type="button"
               onClick={() => onChange(value.filter((item) => item !== tag))}
               className="rounded p-0.5 hover:bg-accent/15"
-              aria-label={`Rimuovi tag ${tag}`}
+              aria-label={t('tag.remove', { tag })}
             >
               <X size={12} />
             </button>
@@ -53,7 +55,7 @@ export function TagInput({ value, onChange, suggestions = [], placeholder = 'Agg
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={handleKeyDown}
           onBlur={commit}
-          placeholder={value.length === 0 ? placeholder : ''}
+          placeholder={value.length === 0 ? placeholder ?? t('tag.add') : ''}
           className="h-7 min-w-24 flex-1 bg-transparent px-1 text-sm text-ink outline-none placeholder:text-faint"
         />
       </div>

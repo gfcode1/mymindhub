@@ -25,3 +25,5 @@ dist-ssr
 
 # Deploy secrets (Neocities API key)
 .env.deploy
+extension/dist/
+extension/release/

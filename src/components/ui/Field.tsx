@@ -53,16 +53,25 @@ export function Field({
   hint,
   children,
   className,
+  action,
 }: {
   label: string
   htmlFor?: string
   hint?: string
   children: React.ReactNode
   className?: string
+  action?: React.ReactNode
 }) {
   return (
     <div className={className}>
-      <Label htmlFor={htmlFor}>{label}</Label>
+      {action ? (
+        <div className="flex items-start justify-between gap-2">
+          <Label htmlFor={htmlFor}>{label}</Label>
+          <div className="-mt-0.5 mb-1">{action}</div>
+        </div>
+      ) : (
+        <Label htmlFor={htmlFor}>{label}</Label>
+      )}
       {children}
       {hint ? <p className="mt-1.5 text-xs text-faint">{hint}</p> : null}
     </div>
